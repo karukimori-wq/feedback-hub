@@ -136,6 +136,38 @@ export async function urgentNotifications(db: D1Database) {
   return result.results;
 }
 
+export async function getAdminOverview(db: D1Database) {
+  const [totalIssues, openIssues, conversations, analyses, categoryCounts, urgent, bugTop, requestTop, questionTop] = await Promise.all([
+    db.prepare(`SELECT COUNT(*) AS count FROM feedback_issues`).first<{ count: number }>(),
+    db.prepare(`SELECT COUNT(*) AS count FROM feedback_issues WHERE status = 'open'`).first<{ count: number }>(),
+    db.prepare(`SELECT COUNT(*) AS count FROM feedback_conversations`).first<{ count: number }>(),
+    db.prepare(`SELECT COUNT(*) AS count FROM feedback_ai_analyses`).first<{ count: number }>(),
+    db.prepare(`SELECT category, COUNT(*) AS issueCount, SUM(count) AS feedbackCount FROM feedback_issues GROUP BY category ORDER BY feedbackCount DESC`).all(),
+    urgentNotifications(db),
+    listIssues(db, 'Bug'),
+    listRequestIssues(db),
+    listIssues(db, 'Question'),
+  ]);
+
+  return {
+    totals: {
+      issues: Number(totalIssues?.count ?? 0),
+      openIssues: Number(openIssues?.count ?? 0),
+      conversations: Number(conversations?.count ?? 0),
+      analyses: Number(analyses?.count ?? 0),
+      urgentNotifications: urgent.length,
+    },
+    categoryCounts: categoryCounts.results,
+    rankings: {
+      bugs: bugTop.slice(0, 10),
+      requests: requestTop.slice(0, 20),
+      questions: questionTop.slice(0, 20),
+    },
+    urgentNotifications: urgent,
+    generatedAt: nowIso(),
+  };
+}
+
 export async function updateIssueStatus(db: D1Database, issueId: string, input: UpdateIssueStatusInput) {
   const issue = await db.prepare(`SELECT issue_id, status FROM feedback_issues WHERE issue_id = ?`).bind(issueId).first<{ issue_id: string; status: string }>();
   if (!issue) return null;
@@ -165,6 +197,11 @@ export async function updateIssueStatus(db: D1Database, issueId: string, input: 
   ).run();
 
   return statusEvent;
+}
+
+async function listRequestIssues(db: D1Database) {
+  const result = await db.prepare(`SELECT * FROM feedback_issues WHERE category IN ('Feature Request', 'Improvement', 'UX Feedback') ORDER BY priority_score DESC, last_seen_at DESC LIMIT 100`).all();
+  return result.results;
 }
 
 async function saveAnalysis(db: D1Database, conversationId: string, analysis: FeedbackAnalysis) {
