@@ -31,6 +31,8 @@ Conversation and Message preserve the original user voice. AI Analysis interpret
 - `GET /health`
 - `GET /version`
 - `GET /contracts/status`
+- `GET /api/persistence/status`
+- `POST /api/persistence/roundtrip`
 - `POST /api/feedback/conversations`
 - `POST /api/feedback/conversations/:conversationId/messages`
 - `POST /api/feedback/conversations/:conversationId/analyze`
@@ -56,6 +58,16 @@ For local Cloudflare D1 work:
 npm run db:migrate:local
 npm run dev
 ```
+
+For Cloudflare deployment:
+
+```bash
+npx wrangler d1 create feedback-hub
+npm run db:migrate:remote
+npm run deploy
+```
+
+See `docs/cloudflare-deployment.md` for the first-deploy runbook and production smoke tests.
 
 ## Platform Contract
 
