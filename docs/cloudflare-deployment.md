@@ -15,6 +15,7 @@ This runbook covers the first Cloudflare deployment for Feedback Hub.
 - Cloudflare account access
 - Wrangler authentication or `CLOUDFLARE_API_TOKEN`
 - A D1 database for Feedback Hub
+- AI Platform Core deployed and reachable
 
 ## First Deployment
 
@@ -38,13 +39,30 @@ npx wrangler d1 create feedback-hub
 }
 ```
 
-3. Apply the initial migration to the remote database.
+3. Confirm the AI Platform Core binding or base URL.
+
+`wrangler.jsonc` prefers the Worker service binding:
+
+```jsonc
+{
+  "services": [
+    {
+      "binding": "AI_PLATFORM_CORE_SERVICE",
+      "service": "ai-platform-core"
+    }
+  ]
+}
+```
+
+If service binding is not available, set `AI_PLATFORM_CORE_BASE_URL` instead. Use `AI_PLATFORM_CORE_TOKEN` only when AI Platform Core requires a bearer token.
+
+4. Apply the initial migration to the remote database.
 
 ```bash
 npm run db:migrate:remote
 ```
 
-4. Deploy the Worker.
+5. Deploy the Worker.
 
 ```bash
 npm run deploy
@@ -69,6 +87,7 @@ Expected results:
 - `/contracts/status` includes the persistence endpoints.
 - `/api/persistence/status` returns `databaseBackedPersistenceReady: true`.
 - `/api/persistence/roundtrip` returns `roundtripReady: true`.
+- `/api/persistence/roundtrip` should return `analysisSource: "ai-platform-core"` when AI Platform Core is reachable.
 
 ## Browser Client Requirements
 
