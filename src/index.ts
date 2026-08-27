@@ -1,12 +1,39 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { APP_NAME, CONTRACT_VERSION } from './domain';
-import { analyzeConversation, createConversation, createMessage, getIssue, listIssues, urgentNotifications } from './repository';
+import {
+  analyzeConversation,
+  createConversation,
+  createMessage,
+  getIssue,
+  getPersistenceStatus,
+  listIssues,
+  runPersistenceRoundtrip,
+  urgentNotifications,
+} from './repository';
 import { createConversationSchema, createMessageSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
+app.use('*', async (c, next) => {
+  c.header('Access-Control-Allow-Origin', '*');
+  c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  c.header('Access-Control-Allow-Headers', 'Content-Type, X-Client-Id, X-Workspace-Id, X-User-Id, X-Request-Id, X-Correlation-Id');
+  if (c.req.method === 'OPTIONS') return c.body(null, 204);
+  await next();
+});
+
 app.onError((error, c) => {
+  if (error instanceof z.ZodError) {
+    return c.json({
+      status: 'error',
+      errorCode: 'VALIDATION_ERROR',
+      issues: error.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+      })),
+    }, 400);
+  }
   if (error.message === 'CONVERSATION_NOT_FOUND') {
     return c.json({ status: 'error', errorCode: 'CONVERSATION_NOT_FOUND' }, 404);
   }
@@ -29,6 +56,8 @@ app.get('/contracts/status', (c) => c.json({
     'GET /health',
     'GET /version',
     'GET /contracts/status',
+    'GET /api/persistence/status',
+    'POST /api/persistence/roundtrip',
     'POST /api/feedback/conversations',
     'POST /api/feedback/conversations/:conversationId/messages',
     'POST /api/feedback/conversations/:conversationId/analyze',
@@ -42,10 +71,22 @@ app.get('/contracts/status', (c) => c.json({
   timestamp: new Date().toISOString(),
 }));
 
+app.get('/api/persistence/status', async (c) => c.json({
+  appName: APP_NAME,
+  status: 'success',
+  ...await getPersistenceStatus(c.env.DB),
+}));
+
+app.post('/api/persistence/roundtrip', async (c) => c.json({
+  appName: APP_NAME,
+  status: 'success',
+  ...await runPersistenceRoundtrip(c.env.DB),
+}, 201));
+
 app.post('/api/feedback/conversations', async (c) => {
   const input = createConversationSchema.parse(await c.req.json());
   const result = await createConversation(c.env.DB, input);
-  return c.json({ result: 'success', ...result }, 201);
+  return c.json({ status: 'success', ...result }, 201);
 });
 
 app.post('/api/feedback/conversations/:conversationId/messages', async (c) => {
