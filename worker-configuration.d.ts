@@ -1,0 +1,1 @@
+interface Env { DB: D1Database; APP_NAME: string; CONTRACT_VERSION: string; }
