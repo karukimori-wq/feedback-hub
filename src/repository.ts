@@ -1,6 +1,6 @@
 import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
 import { newId, nowIso } from './ids';
-import type { CreateConversationInput, CreateMessageInput } from './schemas';
+import type { CreateConversationInput, CreateMessageInput, UpdateIssueStatusInput } from './schemas';
 
 export async function getPersistenceStatus(db: D1Database) {
   const checkedAt = nowIso();
@@ -127,12 +127,44 @@ export async function getIssue(db: D1Database, issueId: string) {
   const issue = await db.prepare(`SELECT * FROM feedback_issues WHERE issue_id = ?`).bind(issueId).first();
   if (!issue) return null;
   const links = await db.prepare(`SELECT * FROM feedback_issue_links WHERE issue_id = ? ORDER BY created_at DESC`).bind(issueId).all();
-  return { issue, links: links.results };
+  const statusEvents = await db.prepare(`SELECT * FROM feedback_issue_status_events WHERE issue_id = ? ORDER BY created_at DESC`).bind(issueId).all();
+  return { issue, links: links.results, statusEvents: statusEvents.results };
 }
 
 export async function urgentNotifications(db: D1Database) {
   const result = await db.prepare(`SELECT * FROM feedback_issues WHERE status = 'open' AND (severity = 'Critical' OR impact = 'Critical' OR count >= 30) ORDER BY priority_score DESC, last_seen_at DESC`).all();
   return result.results;
+}
+
+export async function updateIssueStatus(db: D1Database, issueId: string, input: UpdateIssueStatusInput) {
+  const issue = await db.prepare(`SELECT issue_id, status FROM feedback_issues WHERE issue_id = ?`).bind(issueId).first<{ issue_id: string; status: string }>();
+  if (!issue) return null;
+
+  const now = nowIso();
+  await db.prepare(`UPDATE feedback_issues SET status = ?, updated_at = ? WHERE issue_id = ?`).bind(input.status, now, issueId).run();
+  const statusEvent = {
+    statusEventId: newId('status'),
+    issueId,
+    previousStatus: issue.status,
+    nextStatus: input.status,
+    changedBy: input.changedBy ?? null,
+    note: input.note ?? null,
+    createdAt: now,
+  };
+
+  await db.prepare(`INSERT INTO feedback_issue_status_events (
+    status_event_id, issue_id, previous_status, next_status, changed_by, note, created_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?)`).bind(
+    statusEvent.statusEventId,
+    statusEvent.issueId,
+    statusEvent.previousStatus,
+    statusEvent.nextStatus,
+    statusEvent.changedBy,
+    statusEvent.note,
+    statusEvent.createdAt,
+  ).run();
+
+  return statusEvent;
 }
 
 async function saveAnalysis(db: D1Database, conversationId: string, analysis: FeedbackAnalysis) {
