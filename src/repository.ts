@@ -1,3 +1,4 @@
+import { analyzeWithAiPlatformCore, type AiPlatformCoreEnv } from './ai-platform-core';
 import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
 import { newId, nowIso } from './ids';
 import type { CreateConversationInput, CreateMessageInput, UpdateIssueStatusInput } from './schemas';
@@ -24,7 +25,7 @@ export async function getPersistenceStatus(db: D1Database) {
   }
 }
 
-export async function runPersistenceRoundtrip(db: D1Database) {
+export async function runPersistenceRoundtrip(db: D1Database, env: AiPlatformCoreEnv = {}) {
   const input = {
     appId: 'feedback-hub',
     appName: 'Feedback Hub',
@@ -40,7 +41,7 @@ export async function runPersistenceRoundtrip(db: D1Database) {
   };
 
   const conversation = await createConversation(db, input);
-  const analysis = await analyzeConversation(db, conversation.conversationId);
+  const analysis = await analyzeConversation(db, conversation.conversationId, env);
   const persisted = await db.prepare(`SELECT conversation_id FROM feedback_conversations WHERE conversation_id = ?`).bind(conversation.conversationId).first();
 
   return {
@@ -104,15 +105,29 @@ export async function createMessage(db: D1Database, conversationId: string, inpu
   return { messageId, conversationId, role: input.role, createdAt };
 }
 
-export async function analyzeConversation(db: D1Database, conversationId: string) {
+export async function analyzeConversation(db: D1Database, conversationId: string, env: AiPlatformCoreEnv = {}) {
   await assertConversationExists(db, conversationId);
+  const conversation = await db.prepare(`SELECT app_id, workspace_id, user_id FROM feedback_conversations WHERE conversation_id = ?`).bind(conversationId).first<{
+    app_id: string;
+    workspace_id: string;
+    user_id: string;
+  }>();
   const messages = await db.prepare(`SELECT body FROM feedback_messages WHERE conversation_id = ? ORDER BY created_at ASC`).bind(conversationId).all<{ body: string }>();
   const text = messages.results.map((message) => message.body).join('\n');
-  const analysis = analyzeFeedbackText(text || 'No message provided');
-  const analysisId = await saveAnalysis(db, conversationId, analysis);
-  const issue = await linkAnalysisToIssue(db, conversationId, analysisId, analysis);
+  const analysisResult = await analyzeWithAiPlatformCore(env, {
+    text: text || 'No message provided',
+    conversationId,
+    appId: conversation?.app_id,
+    workspaceId: conversation?.workspace_id,
+    userId: conversation?.user_id,
+  });
+  const analysisId = await saveAnalysis(db, conversationId, analysisResult.analysis, {
+    analysisSource: analysisResult.source,
+    fallbackUsed: analysisResult.fallbackUsed,
+  });
+  const issue = await linkAnalysisToIssue(db, conversationId, analysisId, analysisResult.analysis);
 
-  return { analysisId, analysis, issue };
+  return { analysisId, analysis: analysisResult.analysis, analysisSource: analysisResult.source, fallbackUsed: analysisResult.fallbackUsed, issue };
 }
 
 export async function listIssues(db: D1Database, category?: string) {
@@ -204,7 +219,7 @@ async function listRequestIssues(db: D1Database) {
   return result.results;
 }
 
-async function saveAnalysis(db: D1Database, conversationId: string, analysis: FeedbackAnalysis) {
+async function saveAnalysis(db: D1Database, conversationId: string, analysis: FeedbackAnalysis, metadata: Record<string, unknown> = {}) {
   const analysisId = newId('ana');
   const createdAt = nowIso();
 
@@ -221,7 +236,7 @@ async function saveAnalysis(db: D1Database, conversationId: string, analysis: Fe
     analysis.summary,
     analysis.normalizedProblem,
     JSON.stringify(analysis.suggestedQuestions),
-    JSON.stringify({ classifier: 'deterministic-mvp' }),
+    JSON.stringify(metadata),
     createdAt,
   ).run();
 
