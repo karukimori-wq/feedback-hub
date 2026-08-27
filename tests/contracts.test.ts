@@ -19,9 +19,17 @@ describe('contract endpoints', () => {
   it('returns platform contract status', async () => {
     const response = await app.request('/contracts/status', {}, env);
     expect(response.status).toBe(200);
-    const body = await response.json() as { identityMode: string; professionalIdRequired: boolean; endpoints: string[] };
+    const body = await response.json() as {
+      identityMode: string;
+      professionalIdRequired: boolean;
+      aiProvider: string;
+      localAiUsage: string;
+      endpoints: string[];
+    };
     expect(body.identityMode).toBe('workspaceId+userId');
     expect(body.professionalIdRequired).toBe(false);
+    expect(body.aiProvider).toBe('ai-platform-core');
+    expect(body.localAiUsage).toBe('fallback-only');
     expect(body.endpoints).toContain('POST /api/feedback/conversations');
     expect(body.endpoints).toContain('GET /api/persistence/status');
     expect(body.endpoints).toContain('POST /api/persistence/roundtrip');
