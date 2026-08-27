@@ -19,5 +19,12 @@ export const createMessageSchema = z.object({
   body: z.string().min(1),
 });
 
+export const updateIssueStatusSchema = z.object({
+  status: z.enum(['open', 'triaged', 'accepted', 'resolved', 'closed']),
+  changedBy: z.string().min(1).optional(),
+  note: z.string().min(1).max(2000).optional(),
+});
+
 export type CreateConversationInput = z.infer<typeof createConversationSchema>;
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
+export type UpdateIssueStatusInput = z.infer<typeof updateIssueStatusSchema>;
