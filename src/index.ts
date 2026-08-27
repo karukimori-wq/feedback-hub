@@ -45,7 +45,7 @@ app.get('/contracts/status', (c) => c.json({
 app.post('/api/feedback/conversations', async (c) => {
   const input = createConversationSchema.parse(await c.req.json());
   const result = await createConversation(c.env.DB, input);
-  return c.json({ status: 'success', ...result }, 201);
+  return c.json({ result: 'success', ...result }, 201);
 });
 
 app.post('/api/feedback/conversations/:conversationId/messages', async (c) => {
