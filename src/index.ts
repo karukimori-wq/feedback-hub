@@ -52,6 +52,8 @@ app.get('/contracts/status', (c) => c.json({
   identityMode: 'workspaceId+userId',
   professionalIdRequired: false,
   contractVersion: CONTRACT_VERSION,
+  aiProvider: 'ai-platform-core',
+  localAiUsage: 'fallback-only',
   owns: ['Feedback Conversation', 'Feedback Message', 'Feedback AI Analysis', 'Feedback Issue', 'Feedback Ranking'],
   doesNotOwn: ['Customer master', 'Lead lifecycle', 'Reservation', 'Payment', 'Sales / revenue', 'Engineering task management'],
   endpoints: [
@@ -84,7 +86,7 @@ app.get('/api/persistence/status', async (c) => c.json({
 app.post('/api/persistence/roundtrip', async (c) => c.json({
   appName: APP_NAME,
   status: 'success',
-  ...await runPersistenceRoundtrip(c.env.DB),
+  ...await runPersistenceRoundtrip(c.env.DB, c.env),
 }, 201));
 
 app.post('/api/feedback/conversations', async (c) => {
@@ -100,7 +102,7 @@ app.post('/api/feedback/conversations/:conversationId/messages', async (c) => {
 });
 
 app.post('/api/feedback/conversations/:conversationId/analyze', async (c) => {
-  const result = await analyzeConversation(c.env.DB, c.req.param('conversationId'));
+  const result = await analyzeConversation(c.env.DB, c.req.param('conversationId'), c.env);
   return c.json({ status: 'success', ...result }, 201);
 });
 
