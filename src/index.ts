@@ -1,0 +1,81 @@
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { APP_NAME, CONTRACT_VERSION } from './domain';
+import { analyzeConversation, createConversation, createMessage, getIssue, listIssues, urgentNotifications } from './repository';
+import { createConversationSchema, createMessageSchema } from './schemas';
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.onError((error, c) => {
+  if (error.message === 'CONVERSATION_NOT_FOUND') {
+    return c.json({ status: 'error', errorCode: 'CONVERSATION_NOT_FOUND' }, 404);
+  }
+  return c.json({ status: 'error', errorCode: 'INTERNAL_ERROR' }, 500);
+});
+
+app.get('/health', (c) => c.json({ appName: APP_NAME, status: 'success', timestamp: new Date().toISOString() }));
+
+app.get('/version', (c) => c.json({ appName: APP_NAME, version: '0.1.0', contractVersion: CONTRACT_VERSION }));
+
+app.get('/contracts/status', (c) => c.json({
+  appName: APP_NAME,
+  status: 'success',
+  identityMode: 'workspaceId+userId',
+  professionalIdRequired: false,
+  contractVersion: CONTRACT_VERSION,
+  owns: ['Feedback Conversation', 'Feedback Message', 'Feedback AI Analysis', 'Feedback Issue', 'Feedback Ranking'],
+  doesNotOwn: ['Customer master', 'Lead lifecycle', 'Reservation', 'Payment', 'Sales / revenue', 'Engineering task management'],
+  endpoints: [
+    'GET /health',
+    'GET /version',
+    'GET /contracts/status',
+    'POST /api/feedback/conversations',
+    'POST /api/feedback/conversations/:conversationId/messages',
+    'POST /api/feedback/conversations/:conversationId/analyze',
+    'GET /api/feedback/issues',
+    'GET /api/feedback/issues/:issueId',
+    'GET /api/feedback/rankings/bugs',
+    'GET /api/feedback/rankings/requests',
+    'GET /api/feedback/rankings/questions',
+    'GET /api/feedback/notifications/urgent',
+  ],
+  timestamp: new Date().toISOString(),
+}));
+
+app.post('/api/feedback/conversations', async (c) => {
+  const input = createConversationSchema.parse(await c.req.json());
+  const result = await createConversation(c.env.DB, input);
+  return c.json({ status: 'success', ...result }, 201);
+});
+
+app.post('/api/feedback/conversations/:conversationId/messages', async (c) => {
+  const input = createMessageSchema.parse(await c.req.json());
+  const result = await createMessage(c.env.DB, c.req.param('conversationId'), input);
+  return c.json({ status: 'success', ...result }, 201);
+});
+
+app.post('/api/feedback/conversations/:conversationId/analyze', async (c) => {
+  const result = await analyzeConversation(c.env.DB, c.req.param('conversationId'));
+  return c.json({ status: 'success', ...result }, 201);
+});
+
+app.get('/api/feedback/issues', async (c) => c.json({ status: 'success', issues: await listIssues(c.env.DB) }));
+
+app.get('/api/feedback/issues/:issueId', async (c) => {
+  const result = await getIssue(c.env.DB, c.req.param('issueId'));
+  if (!result) return c.json({ status: 'error', errorCode: 'ISSUE_NOT_FOUND' }, 404);
+  return c.json({ status: 'success', ...result });
+});
+
+app.get('/api/feedback/rankings/bugs', async (c) => c.json({ status: 'success', ranking: await listIssues(c.env.DB, 'Bug') }));
+app.get('/api/feedback/rankings/requests', async (c) => c.json({ status: 'success', ranking: [...await listIssues(c.env.DB, 'Feature Request'), ...await listIssues(c.env.DB, 'Improvement'), ...await listIssues(c.env.DB, 'UX Feedback')] }));
+app.get('/api/feedback/rankings/questions', async (c) => c.json({ status: 'success', ranking: await listIssues(c.env.DB, 'Question') }));
+app.get('/api/feedback/notifications/urgent', async (c) => c.json({ status: 'success', notifications: await urgentNotifications(c.env.DB) }));
+
+app.notFound((c) => c.json({ status: 'error', errorCode: 'NOT_FOUND' }, 404));
+
+export default app;
+
+export function validateUnknown(value: unknown, schema: z.ZodSchema) {
+  return schema.parse(value);
+}
