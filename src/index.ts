@@ -5,6 +5,7 @@ import {
   analyzeConversation,
   createConversation,
   createMessage,
+  getAdminOverview,
   getIssue,
   getPersistenceStatus,
   listIssues,
@@ -69,6 +70,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/rankings/requests',
     'GET /api/feedback/rankings/questions',
     'GET /api/feedback/notifications/urgent',
+    'GET /api/admin/overview',
   ],
   timestamp: new Date().toISOString(),
 }));
@@ -121,6 +123,11 @@ app.get('/api/feedback/rankings/bugs', async (c) => c.json({ status: 'success', 
 app.get('/api/feedback/rankings/requests', async (c) => c.json({ status: 'success', ranking: [...await listIssues(c.env.DB, 'Feature Request'), ...await listIssues(c.env.DB, 'Improvement'), ...await listIssues(c.env.DB, 'UX Feedback')] }));
 app.get('/api/feedback/rankings/questions', async (c) => c.json({ status: 'success', ranking: await listIssues(c.env.DB, 'Question') }));
 app.get('/api/feedback/notifications/urgent', async (c) => c.json({ status: 'success', notifications: await urgentNotifications(c.env.DB) }));
+
+app.get('/api/admin/overview', async (c) => c.json({
+  status: 'success',
+  overview: await getAdminOverview(c.env.DB),
+}));
 
 app.notFound((c) => c.json({ status: 'error', errorCode: 'NOT_FOUND' }, 404));
 
