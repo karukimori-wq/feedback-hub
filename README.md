@@ -4,13 +4,13 @@ Feedback Hub is the user-voice intelligence system for the professional platform
 
 It receives questions, bugs, UX feedback, improvements, and feature requests from shared UI entry points embedded in apps such as Numeria Studio, Velvet, SNS Planner, and Communication Planner.
 
-The goal is not development management. The goal is to preserve raw user voice, let AI analyze it, group similar feedback into canonical issues, and rank product improvements by severity, count, and impact.
+The goal is not development management. The goal is to preserve raw user voice, ask AI Platform Core to analyze it, group similar feedback into canonical issues, and rank product improvements by severity, count, and impact.
 
 ## MVP Scope
 
 - Shared feedback conversation intake
 - Message persistence
-- AI analysis contract and deterministic MVP classifier
+- AI analysis through AI Platform Core
 - Similar issue grouping
 - Priority score calculation
 - Bug, request, and question rankings
@@ -25,6 +25,16 @@ Conversation -> Message -> AI Analysis -> Issue
 ```
 
 Conversation and Message preserve the original user voice. AI Analysis interprets the conversation. Issue is the canonical improvement unit that groups similar feedback.
+
+## AI Platform
+
+Feedback Hub does not own model execution. AI analysis is delegated to AI Platform Core by service binding or base URL.
+
+- Preferred: `AI_PLATFORM_CORE_SERVICE`
+- Fallback: `AI_PLATFORM_CORE_BASE_URL`
+- Optional secret: `AI_PLATFORM_CORE_TOKEN`
+
+The deterministic classifier is fallback-only for local development, tests, and APC outages.
 
 ## Contract Endpoints
 
