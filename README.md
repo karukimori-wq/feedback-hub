@@ -38,6 +38,7 @@ Conversation and Message preserve the original user voice. AI Analysis interpret
 - `POST /api/feedback/conversations/:conversationId/analyze`
 - `GET /api/feedback/issues`
 - `GET /api/feedback/issues/:issueId`
+- `POST /api/feedback/issues/:issueId/status`
 - `GET /api/feedback/rankings/bugs`
 - `GET /api/feedback/rankings/requests`
 - `GET /api/feedback/rankings/questions`
