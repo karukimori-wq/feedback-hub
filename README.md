@@ -43,6 +43,7 @@ Conversation and Message preserve the original user voice. AI Analysis interpret
 - `GET /api/feedback/rankings/requests`
 - `GET /api/feedback/rankings/questions`
 - `GET /api/feedback/notifications/urgent`
+- `GET /api/admin/overview`
 
 ## Development
 
