@@ -1,0 +1,1 @@
+{"name":"feedback-hub","main":"src/index.ts","compatibility_date":"2026-08-27","d1_databases":[{"binding":"DB","database_name":"feedback-hub","database_id":"REPLACE_WITH_CLOUDFLARE_D1_DATABASE_ID"}],"vars":{"APP_NAME":"feedback-hub","CONTRACT_VERSION":"0.1.0"}}
