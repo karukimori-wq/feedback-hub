@@ -69,8 +69,20 @@ CREATE TABLE IF NOT EXISTS feedback_issue_links (
   FOREIGN KEY (conversation_id) REFERENCES feedback_conversations(conversation_id)
 );
 
+CREATE TABLE IF NOT EXISTS feedback_issue_status_events (
+  status_event_id TEXT PRIMARY KEY,
+  issue_id TEXT NOT NULL,
+  previous_status TEXT NOT NULL,
+  next_status TEXT NOT NULL,
+  changed_by TEXT,
+  note TEXT,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (issue_id) REFERENCES feedback_issues(issue_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_feedback_conversations_workspace ON feedback_conversations(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_feedback_messages_conversation ON feedback_messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_feedback_analyses_conversation ON feedback_ai_analyses(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_feedback_issues_ranking ON feedback_issues(category, status, priority_score DESC, last_seen_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feedback_issue_links_issue ON feedback_issue_links(issue_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_issue_status_events_issue ON feedback_issue_status_events(issue_id, created_at DESC);
