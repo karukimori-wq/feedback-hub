@@ -23,5 +23,27 @@ describe('contract endpoints', () => {
     expect(body.identityMode).toBe('workspaceId+userId');
     expect(body.professionalIdRequired).toBe(false);
     expect(body.endpoints).toContain('POST /api/feedback/conversations');
+    expect(body.endpoints).toContain('GET /api/persistence/status');
+    expect(body.endpoints).toContain('POST /api/persistence/roundtrip');
+  });
+
+  it('returns CORS preflight headers', async () => {
+    const response = await app.request('/api/feedback/conversations', { method: 'OPTIONS' }, env);
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+  });
+
+  it('returns validation errors in a stable shape', async () => {
+    const response = await app.request('/api/feedback/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ appId: 'numeria-studio' }),
+      headers: { 'Content-Type': 'application/json' },
+    }, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
   });
 });
