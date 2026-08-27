@@ -2,6 +2,55 @@ import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnal
 import { newId, nowIso } from './ids';
 import type { CreateConversationInput, CreateMessageInput } from './schemas';
 
+export async function getPersistenceStatus(db: D1Database) {
+  const checkedAt = nowIso();
+  try {
+    await db.prepare(`SELECT 1 AS ok`).first();
+    return {
+      driver: 'd1',
+      d1Configured: true,
+      d1Reachable: true,
+      databaseBackedPersistenceReady: true,
+      checkedAt,
+    };
+  } catch {
+    return {
+      driver: 'd1',
+      d1Configured: true,
+      d1Reachable: false,
+      databaseBackedPersistenceReady: false,
+      checkedAt,
+    };
+  }
+}
+
+export async function runPersistenceRoundtrip(db: D1Database) {
+  const input = {
+    appId: 'feedback-hub',
+    appName: 'Feedback Hub',
+    workspaceId: 'roundtrip_workspace',
+    userId: 'roundtrip_user',
+    route: '/roundtrip',
+    screenName: 'Persistence Roundtrip',
+    appVersion: '0.1.0',
+    device: 'system',
+    browser: 'system',
+    occurredAt: nowIso(),
+    initialMessage: '保存できない。登録してもデータが残らない',
+  };
+
+  const conversation = await createConversation(db, input);
+  const analysis = await analyzeConversation(db, conversation.conversationId);
+  const persisted = await db.prepare(`SELECT conversation_id FROM feedback_conversations WHERE conversation_id = ?`).bind(conversation.conversationId).first();
+
+  return {
+    roundtripReady: Boolean(persisted && analysis.issue.issueId),
+    conversationId: conversation.conversationId,
+    issueId: analysis.issue.issueId,
+    linkedToExisting: analysis.issue.linkedToExisting,
+  };
+}
+
 export async function createConversation(db: D1Database, input: CreateConversationInput) {
   const now = nowIso();
   const conversationId = newId('conv');
@@ -34,7 +83,7 @@ export async function createConversation(db: D1Database, input: CreateConversati
     initialMessage = await createMessage(db, conversationId, { role: 'user', body: input.initialMessage });
   }
 
-  return { conversationId, status: 'open', initialMessage };
+  return { conversationId, conversationStatus: 'open', initialMessage };
 }
 
 export async function createMessage(db: D1Database, conversationId: string, input: CreateMessageInput) {
