@@ -87,6 +87,7 @@ curl "$WORKER_URL/api/feedback/notifications/urgent/summary"
 curl "$WORKER_URL/api/admin/inbox?limit=10"
 curl "$WORKER_URL/api/admin/inbox?severity=Critical&impact=Critical&limit=10"
 curl "$WORKER_URL/api/admin/intake-metrics"
+curl "$WORKER_URL/api/admin/rankings"
 curl "$WORKER_URL/api/admin/issue-summary"
 curl "$WORKER_URL/api/admin/triage-queue?limit=10"
 curl -X POST "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID/status" \
@@ -125,6 +126,7 @@ Expected results:
 - `/api/admin/inbox?limit=10` returns recent conversations enriched with the latest message, AI analysis, and Issue link.
 - `/api/admin/inbox?severity=Critical&impact=Critical&limit=10` returns admin inbox items narrowed to high-priority AI analysis results.
 - `/api/admin/intake-metrics` returns intake, analysis, issue, urgent issue, app, and category totals for admin summary cards.
+- `/api/admin/rankings` returns Bug TOP10, request TOP20, and question TOP20 sections.
 - `/api/admin/issue-summary` returns issue breakdowns by category, status, severity, and impact.
 - `/api/admin/triage-queue?limit=10` returns open Issues sorted by priority with source conversation counts and latest user-message previews.
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID/status` returns a conversation status transition event.
