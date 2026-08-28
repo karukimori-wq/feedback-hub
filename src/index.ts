@@ -12,6 +12,7 @@ import {
   getIssueSummary,
   getIssue,
   getPersistenceStatus,
+  getUrgentNotificationSummary,
   listConversations,
   listIssues,
   runPersistenceRoundtrip,
@@ -82,6 +83,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/rankings/requests',
     'GET /api/feedback/rankings/questions',
     'GET /api/feedback/notifications/urgent',
+    'GET /api/feedback/notifications/urgent/summary',
     'GET /api/admin/inbox',
     'GET /api/admin/issue-summary',
     'GET /api/admin/overview',
@@ -176,6 +178,7 @@ app.get('/api/feedback/rankings/bugs', async (c) => c.json({ status: 'success', 
 app.get('/api/feedback/rankings/requests', async (c) => c.json({ status: 'success', ranking: [...await listIssues(c.env.DB, 'Feature Request'), ...await listIssues(c.env.DB, 'Improvement'), ...await listIssues(c.env.DB, 'UX Feedback')] }));
 app.get('/api/feedback/rankings/questions', async (c) => c.json({ status: 'success', ranking: await listIssues(c.env.DB, 'Question') }));
 app.get('/api/feedback/notifications/urgent', async (c) => c.json({ status: 'success', notifications: await urgentNotifications(c.env.DB) }));
+app.get('/api/feedback/notifications/urgent/summary', async (c) => c.json({ status: 'success', summary: await getUrgentNotificationSummary(c.env.DB) }));
 
 app.get('/api/admin/overview', async (c) => c.json({
   status: 'success',
