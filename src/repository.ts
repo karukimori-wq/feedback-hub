@@ -287,6 +287,25 @@ export async function getAdminOverview(db: D1Database) {
   };
 }
 
+export async function getIssueSummary(db: D1Database) {
+  const [byCategory, byStatus, bySeverity, byImpact, urgent] = await Promise.all([
+    db.prepare(`SELECT category, COUNT(*) AS issueCount, SUM(count) AS feedbackCount FROM feedback_issues GROUP BY category ORDER BY feedbackCount DESC`).all(),
+    db.prepare(`SELECT status, COUNT(*) AS issueCount, SUM(count) AS feedbackCount FROM feedback_issues GROUP BY status ORDER BY issueCount DESC`).all(),
+    db.prepare(`SELECT severity, COUNT(*) AS issueCount, SUM(count) AS feedbackCount FROM feedback_issues GROUP BY severity ORDER BY issueCount DESC`).all(),
+    db.prepare(`SELECT impact, COUNT(*) AS issueCount, SUM(count) AS feedbackCount FROM feedback_issues GROUP BY impact ORDER BY issueCount DESC`).all(),
+    urgentNotifications(db),
+  ]);
+
+  return {
+    byCategory: byCategory.results,
+    byStatus: byStatus.results,
+    bySeverity: bySeverity.results,
+    byImpact: byImpact.results,
+    urgentCount: urgent.length,
+    generatedAt: nowIso(),
+  };
+}
+
 export async function updateIssueStatus(db: D1Database, issueId: string, input: UpdateIssueStatusInput) {
   const issue = await db.prepare(`SELECT issue_id, status FROM feedback_issues WHERE issue_id = ?`).bind(issueId).first<{ issue_id: string; status: string }>();
   if (!issue) return null;
