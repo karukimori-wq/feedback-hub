@@ -8,6 +8,7 @@ import {
   createMessage,
   getAdminOverview,
   getConversation,
+  getIssueSummary,
   getIssue,
   getPersistenceStatus,
   listConversations,
@@ -78,6 +79,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/rankings/requests',
     'GET /api/feedback/rankings/questions',
     'GET /api/feedback/notifications/urgent',
+    'GET /api/admin/issue-summary',
     'GET /api/admin/overview',
   ],
   timestamp: new Date().toISOString(),
@@ -167,6 +169,11 @@ app.get('/api/feedback/notifications/urgent', async (c) => c.json({ status: 'suc
 app.get('/api/admin/overview', async (c) => c.json({
   status: 'success',
   overview: await getAdminOverview(c.env.DB),
+}));
+
+app.get('/api/admin/issue-summary', async (c) => c.json({
+  status: 'success',
+  summary: await getIssueSummary(c.env.DB),
 }));
 
 app.notFound((c) => c.json({ status: 'error', errorCode: 'NOT_FOUND' }, 404));
