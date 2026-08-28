@@ -58,6 +58,8 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /api/feedback/rankings/requests`
 - `GET /api/feedback/rankings/questions`
 - `GET /api/feedback/notifications/urgent`
+- `GET /api/admin/inbox`
+  - Returns recent conversations enriched with the latest message, latest AI analysis, and latest canonical Issue link for admin screens.
 - `GET /api/admin/issue-summary`
 - `GET /api/admin/overview`
 
@@ -88,6 +90,8 @@ npm run deploy
 See `docs/cloudflare-deployment.md` for the first-deploy runbook and production smoke tests.
 
 Issue list filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
+
+Admin inbox filters: `workspaceId`, `appId`, `status`, and `limit`.
 
 ## Platform Contract
 
