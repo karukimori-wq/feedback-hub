@@ -37,6 +37,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('POST /api/feedback/conversations/:conversationId/status');
     expect(body.endpoints).toContain('GET /api/persistence/status');
     expect(body.endpoints).toContain('POST /api/persistence/roundtrip');
+    expect(body.endpoints).toContain('GET /api/feedback/issues/:issueId/source-messages');
     expect(body.endpoints).toContain('POST /api/feedback/issues/:issueId/status');
     expect(body.endpoints).toContain('GET /api/feedback/notifications/urgent/summary');
     expect(body.endpoints).toContain('GET /api/admin/inbox');
@@ -141,6 +142,15 @@ describe('contract endpoints', () => {
 
   it('validates ranking query limits before persistence', async () => {
     const response = await app.request('/api/feedback/rankings/bugs?limit=500', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates issue source message limits before persistence', async () => {
+    const response = await app.request('/api/feedback/issues/issue_test/source-messages?limit=500', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };
