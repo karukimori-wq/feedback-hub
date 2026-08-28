@@ -79,6 +79,7 @@ curl "$WORKER_URL/contracts/status"
 curl "$WORKER_URL/api/persistence/status"
 curl -X POST "$WORKER_URL/api/persistence/roundtrip"
 curl "$WORKER_URL/api/feedback/conversations?limit=10"
+curl "$WORKER_URL/api/feedback/issues?status=open&severity=Critical&limit=10"
 curl "$WORKER_URL/api/feedback/notifications/urgent"
 curl -X POST "$WORKER_URL/api/feedback/intake" \
   -H "Content-Type: application/json" \
@@ -105,6 +106,7 @@ Expected results:
 - `/api/persistence/roundtrip` returns `roundtripReady: true`.
 - `/api/persistence/roundtrip` should return `analysisSource: "ai-platform-core"` when AI Platform Core is reachable.
 - `/api/feedback/conversations?limit=10` returns recent conversations for the admin list.
+- `/api/feedback/issues?status=open&severity=Critical&limit=10` returns filtered issues for the admin list.
 - `/api/feedback/notifications/urgent` returns `urgencyReasons` for each notification candidate.
 - `/api/feedback/intake` returns `intake.status: "accepted"` and either `intake.nextAction: "ask_follow_up"` or `intake.nextAction: "show_received"`.
 
