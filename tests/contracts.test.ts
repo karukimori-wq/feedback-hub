@@ -31,6 +31,7 @@ describe('contract endpoints', () => {
     expect(body.aiProvider).toBe('ai-platform-core');
     expect(body.localAiUsage).toBe('fallback-only');
     expect(body.endpoints).toContain('POST /api/feedback/intake');
+    expect(body.endpoints).toContain('GET /api/feedback/conversations');
     expect(body.endpoints).toContain('POST /api/feedback/conversations');
     expect(body.endpoints).toContain('GET /api/feedback/conversations/:conversationId');
     expect(body.endpoints).toContain('GET /api/persistence/status');
@@ -70,6 +71,15 @@ describe('contract endpoints', () => {
       }),
       headers: { 'Content-Type': 'application/json' },
     }, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates conversation list query limits', async () => {
+    const response = await app.request('/api/feedback/conversations?limit=500', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };
