@@ -6,6 +6,7 @@ import type {
   CreateFeedbackIntakeInput,
   CreateMessageInput,
   ListConversationsQuery,
+  ListIssuesQuery,
   UpdateIssueStatusInput,
 } from './schemas';
 
@@ -162,11 +163,37 @@ export async function analyzeConversation(db: D1Database, conversationId: string
   return { analysisId, analysis: analysisResult.analysis, analysisSource: analysisResult.source, fallbackUsed: analysisResult.fallbackUsed, issue };
 }
 
-export async function listIssues(db: D1Database, category?: string) {
-  const sql = category
-    ? `SELECT * FROM feedback_issues WHERE category = ? ORDER BY priority_score DESC, last_seen_at DESC LIMIT 100`
-    : `SELECT * FROM feedback_issues ORDER BY priority_score DESC, last_seen_at DESC LIMIT 100`;
-  const result = category ? await db.prepare(sql).bind(category).all() : await db.prepare(sql).all();
+export async function listIssues(db: D1Database, query: ListIssuesQuery | string = {}) {
+  const normalizedQuery: ListIssuesQuery = typeof query === 'string' ? { category: query as ListIssuesQuery['category'] } : query;
+  const conditions = [];
+  const values = [];
+
+  if (normalizedQuery.category) {
+    conditions.push('category = ?');
+    values.push(normalizedQuery.category);
+  }
+  if (normalizedQuery.status) {
+    conditions.push('status = ?');
+    values.push(normalizedQuery.status);
+  }
+  if (normalizedQuery.severity) {
+    conditions.push('severity = ?');
+    values.push(normalizedQuery.severity);
+  }
+  if (normalizedQuery.impact) {
+    conditions.push('impact = ?');
+    values.push(normalizedQuery.impact);
+  }
+  if (normalizedQuery.minCount) {
+    conditions.push('count >= ?');
+    values.push(normalizedQuery.minCount);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = normalizedQuery.limit ?? 100;
+  const result = await db.prepare(`SELECT * FROM feedback_issues ${where} ORDER BY priority_score DESC, last_seen_at DESC LIMIT ?`)
+    .bind(...values, limit)
+    .all();
   return result.results;
 }
 
