@@ -3,6 +3,7 @@ import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnal
 import { newId, nowIso } from './ids';
 import type {
   AdminInboxQuery,
+  AdminIntakeMetricsQuery,
   AdminTriageQueueQuery,
   CreateConversationInput,
   CreateFeedbackIntakeInput,
@@ -585,6 +586,99 @@ export async function getAdminTriageQueue(db: D1Database, query: AdminTriageQueu
       impact: query.impact ?? null,
       minCount: query.minCount ?? null,
       limit,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getAdminIntakeMetrics(db: D1Database, query: AdminIntakeMetricsQuery = {}) {
+  const conversationConditions = [];
+  const conversationValues = [];
+  const issueConditions = [];
+  const issueValues = [];
+
+  if (query.workspaceId) {
+    conversationConditions.push('workspace_id = ?');
+    conversationValues.push(query.workspaceId);
+    issueConditions.push(`issue_id IN (
+      SELECT fil.issue_id
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      WHERE c.workspace_id = ?
+    )`);
+    issueValues.push(query.workspaceId);
+  }
+  if (query.appId) {
+    conversationConditions.push('app_id = ?');
+    conversationValues.push(query.appId);
+    issueConditions.push(`issue_id IN (
+      SELECT fil.issue_id
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      WHERE c.app_id = ?
+    )`);
+    issueValues.push(query.appId);
+  }
+  if (query.since) {
+    conversationConditions.push('created_at >= ?');
+    conversationValues.push(query.since);
+    issueConditions.push('created_at >= ?');
+    issueValues.push(query.since);
+  }
+
+  const conversationWhere = conversationConditions.length > 0 ? `WHERE ${conversationConditions.join(' AND ')}` : '';
+  const issueWhere = issueConditions.length > 0 ? `WHERE ${issueConditions.join(' AND ')}` : '';
+  const urgentWhere = ['status = ? AND (severity = ? OR impact = ? OR count >= ?)'];
+  const urgentValues: Array<string | number> = ['open', 'Critical', 'Critical', 30];
+  if (issueConditions.length > 0) {
+    urgentWhere.push(...issueConditions);
+    urgentValues.push(...issueValues);
+  }
+
+  const [conversations, messages, analyses, issues, urgent, byApp, byCategory] = await Promise.all([
+    db.prepare(`SELECT COUNT(*) AS count FROM feedback_conversations ${conversationWhere}`).bind(...conversationValues).first<{ count: number }>(),
+    db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM feedback_messages
+      WHERE conversation_id IN (SELECT conversation_id FROM feedback_conversations ${conversationWhere})
+    `).bind(...conversationValues).first<{ count: number }>(),
+    db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM feedback_ai_analyses
+      WHERE conversation_id IN (SELECT conversation_id FROM feedback_conversations ${conversationWhere})
+    `).bind(...conversationValues).first<{ count: number }>(),
+    db.prepare(`SELECT COUNT(*) AS count FROM feedback_issues ${issueWhere}`).bind(...issueValues).first<{ count: number }>(),
+    db.prepare(`SELECT COUNT(*) AS count FROM feedback_issues WHERE ${urgentWhere.join(' AND ')}`).bind(...urgentValues).first<{ count: number }>(),
+    db.prepare(`
+      SELECT app_id, app_name, COUNT(*) AS conversationCount
+      FROM feedback_conversations
+      ${conversationWhere}
+      GROUP BY app_id, app_name
+      ORDER BY conversationCount DESC
+    `).bind(...conversationValues).all(),
+    db.prepare(`
+      SELECT category, COUNT(*) AS issueCount, SUM(count) AS feedbackCount
+      FROM feedback_issues
+      ${issueWhere}
+      GROUP BY category
+      ORDER BY feedbackCount DESC
+    `).bind(...issueValues).all(),
+  ]);
+
+  return {
+    totals: {
+      conversations: Number(conversations?.count ?? 0),
+      messages: Number(messages?.count ?? 0),
+      analyses: Number(analyses?.count ?? 0),
+      issues: Number(issues?.count ?? 0),
+      urgentIssues: Number(urgent?.count ?? 0),
+    },
+    byApp: byApp.results,
+    byCategory: byCategory.results,
+    filters: {
+      workspaceId: query.workspaceId ?? null,
+      appId: query.appId ?? null,
+      since: query.since ?? null,
     },
     generatedAt: nowIso(),
   };
