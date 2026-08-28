@@ -30,6 +30,7 @@ describe('contract endpoints', () => {
     expect(body.professionalIdRequired).toBe(false);
     expect(body.aiProvider).toBe('ai-platform-core');
     expect(body.localAiUsage).toBe('fallback-only');
+    expect(body.endpoints).toContain('POST /api/feedback/intake');
     expect(body.endpoints).toContain('POST /api/feedback/conversations');
     expect(body.endpoints).toContain('GET /api/persistence/status');
     expect(body.endpoints).toContain('POST /api/persistence/roundtrip');
@@ -48,6 +49,24 @@ describe('contract endpoints', () => {
     const response = await app.request('/api/feedback/conversations', {
       method: 'POST',
       body: JSON.stringify({ appId: 'numeria-studio' }),
+      headers: { 'Content-Type': 'application/json' },
+    }, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('requires an initial message for feedback intake', async () => {
+    const response = await app.request('/api/feedback/intake', {
+      method: 'POST',
+      body: JSON.stringify({
+        appId: 'numeria-studio',
+        appName: 'Numeria Studio',
+        workspaceId: 'ws_test',
+        userId: 'user_test',
+      }),
       headers: { 'Content-Type': 'application/json' },
     }, env);
 
