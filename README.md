@@ -14,7 +14,7 @@ The goal is not development management. The goal is to preserve raw user voice, 
 - Similar issue grouping
 - Priority score calculation
 - Bug, request, and question rankings
-- Urgent notification candidates
+- Urgent notification candidates with reason codes
 - Cloudflare Workers runtime
 - Cloudflare D1 persistence
 
