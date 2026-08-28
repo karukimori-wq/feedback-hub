@@ -12,6 +12,7 @@ import {
   getAdminRankings,
   getAdminTriageQueue,
   getConversation,
+  getConversationFollowUps,
   getIssueSummary,
   getIssue,
   getIssueSourceMessages,
@@ -26,7 +27,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -79,6 +80,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/conversations',
     'POST /api/feedback/conversations',
     'GET /api/feedback/conversations/:conversationId',
+    'GET /api/feedback/conversations/:conversationId/follow-ups',
     'POST /api/feedback/conversations/:conversationId/messages',
     'POST /api/feedback/conversations/:conversationId/analyze',
     'POST /api/feedback/conversations/:conversationId/status',
@@ -139,6 +141,15 @@ app.get('/api/feedback/conversations/:conversationId', async (c) => {
   const result = await getConversation(c.env.DB, c.req.param('conversationId'));
   if (!result) return c.json({ status: 'error', errorCode: 'CONVERSATION_NOT_FOUND' }, 404);
   return c.json({ status: 'success', ...result });
+});
+
+app.get('/api/feedback/conversations/:conversationId/follow-ups', async (c) => {
+  const query = conversationFollowUpsQuerySchema.parse({
+    limit: c.req.query('limit'),
+  });
+  const result = await getConversationFollowUps(c.env.DB, c.req.param('conversationId'), query);
+  if (!result) return c.json({ status: 'error', errorCode: 'CONVERSATION_NOT_FOUND' }, 404);
+  return c.json({ status: 'success', followUps: result });
 });
 
 app.post('/api/feedback/conversations/:conversationId/messages', async (c) => {
