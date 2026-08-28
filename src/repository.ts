@@ -227,15 +227,37 @@ export async function listConversations(db: D1Database, query: ListConversations
 export async function getConversation(db: D1Database, conversationId: string) {
   const conversation = await db.prepare(`SELECT * FROM feedback_conversations WHERE conversation_id = ?`).bind(conversationId).first();
   if (!conversation) return null;
-  const [messages, analyses] = await Promise.all([
+  const [messages, analyses, issueLinks] = await Promise.all([
     db.prepare(`SELECT * FROM feedback_messages WHERE conversation_id = ? ORDER BY created_at ASC`).bind(conversationId).all(),
     db.prepare(`SELECT * FROM feedback_ai_analyses WHERE conversation_id = ? ORDER BY created_at DESC`).bind(conversationId).all(),
+    db.prepare(`
+      SELECT
+        fil.issue_link_id,
+        fil.issue_id,
+        fil.analysis_id,
+        fil.similarity_score,
+        fil.match_reason,
+        fil.created_at,
+        fi.canonical_title,
+        fi.normalized_problem,
+        fi.category,
+        fi.severity,
+        fi.impact,
+        fi.count,
+        fi.priority_score,
+        fi.status
+      FROM feedback_issue_links fil
+      JOIN feedback_issues fi ON fi.issue_id = fil.issue_id
+      WHERE fil.conversation_id = ?
+      ORDER BY fil.created_at DESC
+    `).bind(conversationId).all(),
   ]);
 
   return {
     conversation,
     messages: messages.results,
     analyses: analyses.results,
+    issueLinks: issueLinks.results,
   };
 }
 
