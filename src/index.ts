@@ -187,6 +187,9 @@ app.get('/api/admin/inbox', async (c) => {
     workspaceId: c.req.query('workspaceId'),
     appId: c.req.query('appId'),
     status: c.req.query('status'),
+    category: c.req.query('category'),
+    severity: c.req.query('severity'),
+    impact: c.req.query('impact'),
     limit: c.req.query('limit'),
   });
   return c.json({ status: 'success', inbox: await getAdminInbox(c.env.DB, query) });
