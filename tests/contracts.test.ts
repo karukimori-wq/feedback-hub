@@ -99,6 +99,15 @@ describe('contract endpoints', () => {
     expect(body.errorCode).toBe('VALIDATION_ERROR');
   });
 
+  it('validates admin inbox analysis filters before persistence', async () => {
+    const response = await app.request('/api/admin/inbox?impact=Urgent', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
   it('validates issue list filters before persistence', async () => {
     const response = await app.request('/api/feedback/issues?severity=Urgent&limit=10', {}, env);
 
