@@ -63,6 +63,8 @@ The deterministic classifier is fallback-only for local development, tests, and 
   - Returns urgent notification totals, reason counts, and top priority score for admin badges and alert routing.
 - `GET /api/admin/inbox`
   - Returns recent conversations enriched with the latest message, latest AI analysis, and latest canonical Issue link for admin screens.
+- `GET /api/admin/intake-metrics`
+  - Returns intake totals, AI analysis totals, Issue totals, urgent Issue totals, app breakdowns, and category breakdowns for admin summary cards.
 - `GET /api/admin/issue-summary`
 - `GET /api/admin/triage-queue`
   - Returns open or triaged Issues sorted by priority with source conversation counts and the latest user-message preview.
@@ -97,6 +99,8 @@ See `docs/cloudflare-deployment.md` for the first-deploy runbook and production 
 Issue list filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
 
 Admin inbox filters: `workspaceId`, `appId`, `status`, `category`, `severity`, `impact`, and `limit`.
+
+Admin intake metrics filters: `workspaceId`, `appId`, and `since`.
 
 Admin triage queue filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
 
