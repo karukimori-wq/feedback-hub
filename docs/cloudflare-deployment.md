@@ -80,6 +80,7 @@ curl "$WORKER_URL/api/persistence/status"
 curl -X POST "$WORKER_URL/api/persistence/roundtrip"
 curl "$WORKER_URL/api/feedback/conversations?limit=10"
 curl "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID"
+curl "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID/follow-ups?limit=5"
 curl "$WORKER_URL/api/feedback/issues?status=open&severity=Critical&limit=10"
 curl "$WORKER_URL/api/feedback/issues/YOUR_ISSUE_ID"
 curl "$WORKER_URL/api/feedback/issues/YOUR_ISSUE_ID/source-messages?limit=50"
@@ -120,6 +121,7 @@ Expected results:
 - `/api/persistence/roundtrip` should return `analysisSource: "ai-platform-core"` when AI Platform Core is reachable.
 - `/api/feedback/conversations?limit=10` returns recent conversations for the admin list.
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID` returns the raw messages, AI analyses, and `issueLinks` to inspect the canonical Issue mapping.
+- `/api/feedback/conversations/YOUR_CONVERSATION_ID/follow-ups?limit=5` returns the latest AI-suggested follow-up questions.
 - `/api/feedback/issues?status=open&severity=Critical&limit=10` returns filtered issues for the admin list.
 - `/api/feedback/issues/YOUR_ISSUE_ID` returns the canonical Issue, issue links, `sourceConversations`, and status history.
 - `/api/feedback/issues/YOUR_ISSUE_ID/source-messages?limit=50` returns original messages linked to the canonical Issue.
