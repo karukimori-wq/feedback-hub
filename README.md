@@ -91,7 +91,7 @@ See `docs/cloudflare-deployment.md` for the first-deploy runbook and production 
 
 Issue list filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
 
-Admin inbox filters: `workspaceId`, `appId`, `status`, and `limit`.
+Admin inbox filters: `workspaceId`, `appId`, `status`, `category`, `severity`, `impact`, and `limit`.
 
 ## Platform Contract
 
