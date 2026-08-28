@@ -32,6 +32,7 @@ describe('contract endpoints', () => {
     expect(body.localAiUsage).toBe('fallback-only');
     expect(body.endpoints).toContain('POST /api/feedback/intake');
     expect(body.endpoints).toContain('POST /api/feedback/conversations');
+    expect(body.endpoints).toContain('GET /api/feedback/conversations/:conversationId');
     expect(body.endpoints).toContain('GET /api/persistence/status');
     expect(body.endpoints).toContain('POST /api/persistence/roundtrip');
     expect(body.endpoints).toContain('POST /api/feedback/issues/:issueId/status');
