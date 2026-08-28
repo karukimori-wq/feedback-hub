@@ -84,6 +84,8 @@ npm run deploy
 
 See `docs/cloudflare-deployment.md` for the first-deploy runbook and production smoke tests.
 
+Issue list filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
+
 ## Platform Contract
 
 See `professional-platform-contracts/docs/repositories/feedback-hub.md`.
