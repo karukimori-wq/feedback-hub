@@ -58,6 +58,12 @@ export const adminTriageQueueQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
+export const adminIntakeMetricsQuerySchema = z.object({
+  workspaceId: z.string().min(1).optional(),
+  appId: z.string().min(1).optional(),
+  since: z.string().datetime().optional(),
+});
+
 export const updateIssueStatusSchema = z.object({
   status: z.enum(['open', 'triaged', 'accepted', 'resolved', 'closed']),
   changedBy: z.string().min(1).optional(),
@@ -69,6 +75,7 @@ export type CreateFeedbackIntakeInput = z.infer<typeof createFeedbackIntakeSchem
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
 export type AdminInboxQuery = z.infer<typeof adminInboxQuerySchema>;
+export type AdminIntakeMetricsQuery = z.infer<typeof adminIntakeMetricsQuerySchema>;
 export type AdminTriageQueueQuery = z.infer<typeof adminTriageQueueQuerySchema>;
 export type ListIssuesQuery = z.infer<typeof listIssuesQuerySchema>;
 export type UpdateConversationStatusInput = z.infer<typeof updateConversationStatusSchema>;
