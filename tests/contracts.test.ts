@@ -41,6 +41,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/feedback/issues/:issueId/source-messages');
     expect(body.endpoints).toContain('POST /api/feedback/issues/:issueId/status');
     expect(body.endpoints).toContain('GET /api/feedback/notifications/urgent/summary');
+    expect(body.endpoints).toContain('GET /api/admin/follow-up-queue');
     expect(body.endpoints).toContain('GET /api/admin/inbox');
     expect(body.endpoints).toContain('GET /api/admin/intake-metrics');
     expect(body.endpoints).toContain('GET /api/admin/rankings');
@@ -98,6 +99,15 @@ describe('contract endpoints', () => {
 
   it('validates conversation follow-up query limits before persistence', async () => {
     const response = await app.request('/api/feedback/conversations/conv_test/follow-ups?limit=100', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates admin follow-up queue limits before persistence', async () => {
+    const response = await app.request('/api/admin/follow-up-queue?limit=500', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };
