@@ -16,7 +16,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, updateIssueStatusSchema } from './schemas';
+import { createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -134,7 +134,17 @@ app.post('/api/feedback/conversations/:conversationId/analyze', async (c) => {
   return c.json({ status: 'success', ...result }, 201);
 });
 
-app.get('/api/feedback/issues', async (c) => c.json({ status: 'success', issues: await listIssues(c.env.DB) }));
+app.get('/api/feedback/issues', async (c) => {
+  const query = listIssuesQuerySchema.parse({
+    category: c.req.query('category'),
+    status: c.req.query('status'),
+    severity: c.req.query('severity'),
+    impact: c.req.query('impact'),
+    minCount: c.req.query('minCount'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', issues: await listIssues(c.env.DB, query) });
+});
 
 app.get('/api/feedback/issues/:issueId', async (c) => {
   const result = await getIssue(c.env.DB, c.req.param('issueId'));
