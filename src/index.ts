@@ -14,6 +14,7 @@ import {
   getConversation,
   getIssueSummary,
   getIssue,
+  getIssueSourceMessages,
   getPersistenceStatus,
   getRankedIssues,
   getRequestRankings,
@@ -25,7 +26,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -83,6 +84,7 @@ app.get('/contracts/status', (c) => c.json({
     'POST /api/feedback/conversations/:conversationId/status',
     'GET /api/feedback/issues',
     'GET /api/feedback/issues/:issueId',
+    'GET /api/feedback/issues/:issueId/source-messages',
     'POST /api/feedback/issues/:issueId/status',
     'GET /api/feedback/rankings/bugs',
     'GET /api/feedback/rankings/requests',
@@ -171,6 +173,15 @@ app.get('/api/feedback/issues', async (c) => {
 
 app.get('/api/feedback/issues/:issueId', async (c) => {
   const result = await getIssue(c.env.DB, c.req.param('issueId'));
+  if (!result) return c.json({ status: 'error', errorCode: 'ISSUE_NOT_FOUND' }, 404);
+  return c.json({ status: 'success', ...result });
+});
+
+app.get('/api/feedback/issues/:issueId/source-messages', async (c) => {
+  const query = issueSourceMessagesQuerySchema.parse({
+    limit: c.req.query('limit'),
+  });
+  const result = await getIssueSourceMessages(c.env.DB, c.req.param('issueId'), query);
   if (!result) return c.json({ status: 'error', errorCode: 'ISSUE_NOT_FOUND' }, 404);
   return c.json({ status: 'success', ...result });
 });
