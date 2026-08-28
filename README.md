@@ -56,6 +56,7 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /api/feedback/rankings/requests`
 - `GET /api/feedback/rankings/questions`
 - `GET /api/feedback/notifications/urgent`
+- `GET /api/admin/issue-summary`
 - `GET /api/admin/overview`
 
 ## Development
