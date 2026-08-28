@@ -287,9 +287,49 @@ export async function updateConversationStatus(db: D1Database, conversationId: s
 export async function getIssue(db: D1Database, issueId: string) {
   const issue = await db.prepare(`SELECT * FROM feedback_issues WHERE issue_id = ?`).bind(issueId).first();
   if (!issue) return null;
-  const links = await db.prepare(`SELECT * FROM feedback_issue_links WHERE issue_id = ? ORDER BY created_at DESC`).bind(issueId).all();
-  const statusEvents = await db.prepare(`SELECT * FROM feedback_issue_status_events WHERE issue_id = ? ORDER BY created_at DESC`).bind(issueId).all();
-  return { issue, links: links.results, statusEvents: statusEvents.results };
+  const [links, sourceConversations, statusEvents] = await Promise.all([
+    db.prepare(`SELECT * FROM feedback_issue_links WHERE issue_id = ? ORDER BY created_at DESC`).bind(issueId).all(),
+    db.prepare(`
+      SELECT
+        fil.issue_link_id,
+        fil.analysis_id,
+        fil.similarity_score,
+        fil.match_reason,
+        fil.created_at AS linked_at,
+        c.conversation_id,
+        c.app_id,
+        c.app_name,
+        c.workspace_id,
+        c.user_id,
+        c.route,
+        c.screen_name,
+        c.app_version,
+        c.device,
+        c.browser,
+        c.occurred_at,
+        c.status AS conversation_status,
+        m.body AS latest_message_body,
+        m.created_at AS latest_message_at,
+        a.summary AS analysis_summary,
+        a.suggested_questions_json,
+        a.created_at AS analysis_created_at
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      LEFT JOIN feedback_messages m ON m.message_id = (
+        SELECT message_id
+        FROM feedback_messages
+        WHERE conversation_id = c.conversation_id
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      LEFT JOIN feedback_ai_analyses a ON a.analysis_id = fil.analysis_id
+      WHERE fil.issue_id = ?
+      ORDER BY fil.created_at DESC
+      LIMIT 100
+    `).bind(issueId).all(),
+    db.prepare(`SELECT * FROM feedback_issue_status_events WHERE issue_id = ? ORDER BY created_at DESC`).bind(issueId).all(),
+  ]);
+  return { issue, links: links.results, sourceConversations: sourceConversations.results, statusEvents: statusEvents.results };
 }
 
 export async function urgentNotifications(db: D1Database) {
