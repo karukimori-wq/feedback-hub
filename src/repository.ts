@@ -220,8 +220,12 @@ export async function getIssue(db: D1Database, issueId: string) {
 }
 
 export async function urgentNotifications(db: D1Database) {
-  const result = await db.prepare(`SELECT * FROM feedback_issues WHERE status = 'open' AND (severity = 'Critical' OR impact = 'Critical' OR count >= 30) ORDER BY priority_score DESC, last_seen_at DESC`).all();
-  return result.results;
+  const result = await db.prepare(`SELECT * FROM feedback_issues WHERE status = 'open' AND (severity = 'Critical' OR impact = 'Critical' OR count >= 30) ORDER BY priority_score DESC, last_seen_at DESC`).all<Record<string, unknown>>();
+  return result.results.map((issue) => ({
+    ...issue,
+    urgencyReasons: explainUrgency(issue),
+    notificationLevel: 'critical',
+  }));
 }
 
 export async function getAdminOverview(db: D1Database) {
@@ -398,4 +402,12 @@ function strongest(a: string, b: string): string {
 
 function decideIntakeNextAction(suggestedQuestions: string[]) {
   return suggestedQuestions.length > 0 ? 'ask_follow_up' : 'show_received';
+}
+
+export function explainUrgency(issue: Record<string, unknown>) {
+  const reasons = [];
+  if (issue.severity === 'Critical') reasons.push('critical_severity');
+  if (issue.impact === 'Critical') reasons.push('critical_impact');
+  if (Number(issue.count ?? 0) >= 30) reasons.push('repeated_feedback_threshold');
+  return reasons;
 }
