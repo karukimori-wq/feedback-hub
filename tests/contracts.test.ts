@@ -38,6 +38,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/persistence/status');
     expect(body.endpoints).toContain('POST /api/persistence/roundtrip');
     expect(body.endpoints).toContain('POST /api/feedback/issues/:issueId/status');
+    expect(body.endpoints).toContain('GET /api/feedback/notifications/urgent/summary');
     expect(body.endpoints).toContain('GET /api/admin/inbox');
     expect(body.endpoints).toContain('GET /api/admin/issue-summary');
     expect(body.endpoints).toContain('GET /api/admin/overview');
