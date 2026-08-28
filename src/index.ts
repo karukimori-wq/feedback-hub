@@ -10,12 +10,13 @@ import {
   getConversation,
   getIssue,
   getPersistenceStatus,
+  listConversations,
   listIssues,
   runPersistenceRoundtrip,
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, updateIssueStatusSchema } from './schemas';
+import { createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -65,6 +66,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/persistence/status',
     'POST /api/persistence/roundtrip',
     'POST /api/feedback/intake',
+    'GET /api/feedback/conversations',
     'POST /api/feedback/conversations',
     'GET /api/feedback/conversations/:conversationId',
     'POST /api/feedback/conversations/:conversationId/messages',
@@ -103,6 +105,16 @@ app.post('/api/feedback/conversations', async (c) => {
   const input = createConversationSchema.parse(await c.req.json());
   const result = await createConversation(c.env.DB, input);
   return c.json({ status: 'success', ...result }, 201);
+});
+
+app.get('/api/feedback/conversations', async (c) => {
+  const query = listConversationsQuerySchema.parse({
+    workspaceId: c.req.query('workspaceId'),
+    appId: c.req.query('appId'),
+    status: c.req.query('status'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', conversations: await listConversations(c.env.DB, query) });
 });
 
 app.get('/api/feedback/conversations/:conversationId', async (c) => {
