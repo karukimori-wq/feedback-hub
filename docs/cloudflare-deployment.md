@@ -81,6 +81,7 @@ curl -X POST "$WORKER_URL/api/persistence/roundtrip"
 curl "$WORKER_URL/api/feedback/conversations?limit=10"
 curl "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID"
 curl "$WORKER_URL/api/feedback/issues?status=open&severity=Critical&limit=10"
+curl "$WORKER_URL/api/feedback/issues/YOUR_ISSUE_ID"
 curl "$WORKER_URL/api/feedback/notifications/urgent"
 curl "$WORKER_URL/api/feedback/notifications/urgent/summary"
 curl "$WORKER_URL/api/admin/inbox?limit=10"
@@ -116,6 +117,7 @@ Expected results:
 - `/api/feedback/conversations?limit=10` returns recent conversations for the admin list.
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID` returns the raw messages, AI analyses, and `issueLinks` to inspect the canonical Issue mapping.
 - `/api/feedback/issues?status=open&severity=Critical&limit=10` returns filtered issues for the admin list.
+- `/api/feedback/issues/YOUR_ISSUE_ID` returns the canonical Issue, issue links, `sourceConversations`, and status history.
 - `/api/feedback/notifications/urgent` returns `urgencyReasons` for each notification candidate.
 - `/api/feedback/notifications/urgent/summary` returns urgent totals, reason counts, and top priority score.
 - `/api/admin/inbox?limit=10` returns recent conversations enriched with the latest message, AI analysis, and Issue link.
