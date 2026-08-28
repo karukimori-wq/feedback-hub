@@ -53,6 +53,7 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `POST /api/feedback/conversations/:conversationId/status`
 - `GET /api/feedback/issues`
 - `GET /api/feedback/issues/:issueId`
+  - Returns the canonical Issue, issue links, source conversation previews, and status history so admins can inspect the original user voice behind an AI summary.
 - `POST /api/feedback/issues/:issueId/status`
 - `GET /api/feedback/rankings/bugs`
 - `GET /api/feedback/rankings/requests`
