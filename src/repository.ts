@@ -3,6 +3,7 @@ import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnal
 import { newId, nowIso } from './ids';
 import type {
   AdminInboxQuery,
+  AdminFollowUpQueueQuery,
   AdminIntakeMetricsQuery,
   AdminRankingsQuery,
   AdminTriageQueueQuery,
@@ -562,6 +563,78 @@ export async function getAdminInbox(db: D1Database, query: AdminInboxQuery = {})
       category: query.category ?? null,
       severity: query.severity ?? null,
       impact: query.impact ?? null,
+      limit,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getAdminFollowUpQueue(db: D1Database, query: AdminFollowUpQueueQuery = {}) {
+  const conditions = ['c.status = ?'];
+  const values: Array<string | number> = ['open'];
+
+  if (query.workspaceId) {
+    conditions.push('c.workspace_id = ?');
+    values.push(query.workspaceId);
+  }
+  if (query.appId) {
+    conditions.push('c.app_id = ?');
+    values.push(query.appId);
+  }
+
+  const limit = query.limit ?? 50;
+  const result = await db.prepare(`
+    SELECT
+      c.conversation_id,
+      c.app_id,
+      c.app_name,
+      c.workspace_id,
+      c.user_id,
+      c.route,
+      c.screen_name,
+      c.app_version,
+      c.device,
+      c.browser,
+      c.occurred_at,
+      c.updated_at,
+      m.body AS latest_message_body,
+      m.created_at AS latest_message_at,
+      a.analysis_id,
+      a.category,
+      a.severity,
+      a.impact,
+      a.summary,
+      a.suggested_questions_json,
+      a.created_at AS analysis_created_at
+    FROM feedback_conversations c
+    JOIN feedback_ai_analyses a ON a.analysis_id = (
+      SELECT analysis_id
+      FROM feedback_ai_analyses
+      WHERE conversation_id = c.conversation_id
+        AND suggested_questions_json != '[]'
+      ORDER BY created_at DESC
+      LIMIT 1
+    )
+    LEFT JOIN feedback_messages m ON m.message_id = (
+      SELECT message_id
+      FROM feedback_messages
+      WHERE conversation_id = c.conversation_id
+      ORDER BY created_at DESC
+      LIMIT 1
+    )
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY c.updated_at DESC
+    LIMIT ?
+  `).bind(...values, limit).all<Record<string, unknown>>();
+
+  return {
+    items: result.results.map((item) => ({
+      ...item,
+      suggestedQuestions: parseJsonStringArray(item.suggested_questions_json),
+    })),
+    filters: {
+      workspaceId: query.workspaceId ?? null,
+      appId: query.appId ?? null,
       limit,
     },
     generatedAt: nowIso(),
