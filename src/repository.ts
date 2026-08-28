@@ -3,6 +3,7 @@ import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnal
 import { newId, nowIso } from './ids';
 import type {
   AdminInboxQuery,
+  AdminTriageQueueQuery,
   CreateConversationInput,
   CreateFeedbackIntakeInput,
   CreateMessageInput,
@@ -311,7 +312,7 @@ export async function getIssue(db: D1Database, issueId: string) {
         m.body AS latest_message_body,
         m.created_at AS latest_message_at,
         a.summary AS analysis_summary,
-        a.suggested_questions_json,
+        a.suggested_questions,
         a.created_at AS analysis_created_at
       FROM feedback_issue_links fil
       JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
@@ -479,6 +480,110 @@ export async function getAdminInbox(db: D1Database, query: AdminInboxQuery = {})
       category: query.category ?? null,
       severity: query.severity ?? null,
       impact: query.impact ?? null,
+      limit,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getAdminTriageQueue(db: D1Database, query: AdminTriageQueueQuery = {}) {
+  const conditions = [];
+  const values = [];
+
+  conditions.push(`fi.status = ?`);
+  values.push(query.status ?? 'open');
+
+  if (query.category) {
+    conditions.push('fi.category = ?');
+    values.push(query.category);
+  }
+  if (query.severity) {
+    conditions.push('fi.severity = ?');
+    values.push(query.severity);
+  }
+  if (query.impact) {
+    conditions.push('fi.impact = ?');
+    values.push(query.impact);
+  }
+  if (query.minCount) {
+    conditions.push('fi.count >= ?');
+    values.push(query.minCount);
+  }
+
+  const limit = query.limit ?? 25;
+  const result = await db.prepare(`
+    SELECT
+      fi.issue_id,
+      fi.canonical_title,
+      fi.normalized_problem,
+      fi.category,
+      fi.severity,
+      fi.impact,
+      fi.count,
+      fi.priority_score,
+      fi.priority_components_json,
+      fi.status,
+      fi.first_seen_at,
+      fi.last_seen_at,
+      latest.conversation_id AS latest_conversation_id,
+      latest.app_id AS latest_app_id,
+      latest.app_name AS latest_app_name,
+      latest.workspace_id AS latest_workspace_id,
+      latest.route AS latest_route,
+      latest.screen_name AS latest_screen_name,
+      latest.latest_message_body,
+      latest.latest_message_at,
+      link_counts.source_conversation_count
+    FROM feedback_issues fi
+    LEFT JOIN (
+      SELECT issue_id, COUNT(DISTINCT conversation_id) AS source_conversation_count
+      FROM feedback_issue_links
+      GROUP BY issue_id
+    ) link_counts ON link_counts.issue_id = fi.issue_id
+    LEFT JOIN (
+      SELECT
+        fil.issue_id,
+        c.conversation_id,
+        c.app_id,
+        c.app_name,
+        c.workspace_id,
+        c.route,
+        c.screen_name,
+        m.body AS latest_message_body,
+        m.created_at AS latest_message_at
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      LEFT JOIN feedback_messages m ON m.message_id = (
+        SELECT message_id
+        FROM feedback_messages
+        WHERE conversation_id = c.conversation_id
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      WHERE fil.issue_link_id = (
+        SELECT issue_link_id
+        FROM feedback_issue_links
+        WHERE issue_id = fil.issue_id
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+    ) latest ON latest.issue_id = fi.issue_id
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY fi.priority_score DESC, fi.count DESC, fi.last_seen_at DESC
+    LIMIT ?
+  `).bind(...values, limit).all();
+
+  return {
+    items: result.results.map((issue) => ({
+      ...issue,
+      urgencyReasons: explainUrgency(issue),
+    })),
+    filters: {
+      category: query.category ?? null,
+      status: query.status ?? 'open',
+      severity: query.severity ?? null,
+      impact: query.impact ?? null,
+      minCount: query.minCount ?? null,
       limit,
     },
     generatedAt: nowIso(),
