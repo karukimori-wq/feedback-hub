@@ -47,6 +47,7 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /api/feedback/conversations`
 - `POST /api/feedback/conversations`
 - `GET /api/feedback/conversations/:conversationId`
+  - Returns the raw conversation, messages, AI analyses, and `issueLinks` to inspect which canonical Issue the feedback was merged into.
 - `POST /api/feedback/conversations/:conversationId/messages`
 - `POST /api/feedback/conversations/:conversationId/analyze`
 - `POST /api/feedback/conversations/:conversationId/status`
