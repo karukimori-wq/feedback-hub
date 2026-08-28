@@ -14,10 +14,11 @@ import {
   listConversations,
   listIssues,
   runPersistenceRoundtrip,
+  updateConversationStatus,
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, updateIssueStatusSchema } from './schemas';
+import { createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -72,6 +73,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/conversations/:conversationId',
     'POST /api/feedback/conversations/:conversationId/messages',
     'POST /api/feedback/conversations/:conversationId/analyze',
+    'POST /api/feedback/conversations/:conversationId/status',
     'GET /api/feedback/issues',
     'GET /api/feedback/issues/:issueId',
     'POST /api/feedback/issues/:issueId/status',
@@ -134,6 +136,13 @@ app.post('/api/feedback/conversations/:conversationId/messages', async (c) => {
 app.post('/api/feedback/conversations/:conversationId/analyze', async (c) => {
   const result = await analyzeConversation(c.env.DB, c.req.param('conversationId'), c.env);
   return c.json({ status: 'success', ...result }, 201);
+});
+
+app.post('/api/feedback/conversations/:conversationId/status', async (c) => {
+  const input = updateConversationStatusSchema.parse(await c.req.json());
+  const result = await updateConversationStatus(c.env.DB, c.req.param('conversationId'), input);
+  if (!result) return c.json({ status: 'error', errorCode: 'CONVERSATION_NOT_FOUND' }, 404);
+  return c.json({ status: 'success', statusEvent: result });
 });
 
 app.get('/api/feedback/issues', async (c) => {
