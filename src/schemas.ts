@@ -49,6 +49,15 @@ export const adminInboxQuerySchema = listConversationsQuerySchema.extend({
   impact: listIssuesQuerySchema.shape.impact,
 });
 
+export const adminTriageQueueQuerySchema = z.object({
+  category: listIssuesQuerySchema.shape.category,
+  status: z.enum(['open', 'triaged']).optional(),
+  severity: listIssuesQuerySchema.shape.severity,
+  impact: listIssuesQuerySchema.shape.impact,
+  minCount: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+});
+
 export const updateIssueStatusSchema = z.object({
   status: z.enum(['open', 'triaged', 'accepted', 'resolved', 'closed']),
   changedBy: z.string().min(1).optional(),
@@ -60,6 +69,7 @@ export type CreateFeedbackIntakeInput = z.infer<typeof createFeedbackIntakeSchem
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
 export type AdminInboxQuery = z.infer<typeof adminInboxQuerySchema>;
+export type AdminTriageQueueQuery = z.infer<typeof adminTriageQueueQuerySchema>;
 export type ListIssuesQuery = z.infer<typeof listIssuesQuerySchema>;
 export type UpdateConversationStatusInput = z.infer<typeof updateConversationStatusSchema>;
 export type UpdateIssueStatusInput = z.infer<typeof updateIssueStatusSchema>;
