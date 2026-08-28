@@ -76,6 +76,10 @@ export const adminRankingsQuerySchema = z.object({
   questionLimit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
+export const issueSourceMessagesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+
 export const updateIssueStatusSchema = z.object({
   status: z.enum(['open', 'triaged', 'accepted', 'resolved', 'closed']),
   changedBy: z.string().min(1).optional(),
@@ -91,6 +95,7 @@ export type AdminIntakeMetricsQuery = z.infer<typeof adminIntakeMetricsQuerySche
 export type AdminRankingsQuery = z.infer<typeof adminRankingsQuerySchema>;
 export type AdminTriageQueueQuery = z.infer<typeof adminTriageQueueQuerySchema>;
 export type ListIssuesQuery = z.infer<typeof listIssuesQuerySchema>;
+export type IssueSourceMessagesQuery = z.infer<typeof issueSourceMessagesQuerySchema>;
 export type RankingQuery = z.infer<typeof rankingQuerySchema>;
 export type UpdateConversationStatusInput = z.infer<typeof updateConversationStatusSchema>;
 export type UpdateIssueStatusInput = z.infer<typeof updateIssueStatusSchema>;
