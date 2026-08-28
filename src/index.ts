@@ -6,6 +6,7 @@ import {
   createConversation,
   createFeedbackIntake,
   createMessage,
+  getAdminFollowUpQueue,
   getAdminInbox,
   getAdminIntakeMetrics,
   getAdminOverview,
@@ -27,7 +28,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -93,6 +94,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/rankings/questions',
     'GET /api/feedback/notifications/urgent',
     'GET /api/feedback/notifications/urgent/summary',
+    'GET /api/admin/follow-up-queue',
     'GET /api/admin/inbox',
     'GET /api/admin/intake-metrics',
     'GET /api/admin/rankings',
@@ -232,6 +234,15 @@ app.get('/api/admin/overview', async (c) => c.json({
   status: 'success',
   overview: await getAdminOverview(c.env.DB),
 }));
+
+app.get('/api/admin/follow-up-queue', async (c) => {
+  const query = adminFollowUpQueueQuerySchema.parse({
+    workspaceId: c.req.query('workspaceId'),
+    appId: c.req.query('appId'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', followUpQueue: await getAdminFollowUpQueue(c.env.DB, query) });
+});
 
 app.get('/api/admin/inbox', async (c) => {
   const query = adminInboxQuerySchema.parse({
