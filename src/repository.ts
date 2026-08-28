@@ -2,6 +2,7 @@ import { analyzeWithAiPlatformCore, type AiPlatformCoreEnv } from './ai-platform
 import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
 import { newId, nowIso } from './ids';
 import type {
+  AdminInboxQuery,
   CreateConversationInput,
   CreateFeedbackIntakeInput,
   CreateMessageInput,
@@ -328,6 +329,98 @@ export async function getAdminOverview(db: D1Database) {
       questions: questionTop.slice(0, 20),
     },
     urgentNotifications: urgent,
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getAdminInbox(db: D1Database, query: AdminInboxQuery = {}) {
+  const conditions = [];
+  const values = [];
+
+  if (query.workspaceId) {
+    conditions.push('c.workspace_id = ?');
+    values.push(query.workspaceId);
+  }
+  if (query.appId) {
+    conditions.push('c.app_id = ?');
+    values.push(query.appId);
+  }
+  if (query.status) {
+    conditions.push('c.status = ?');
+    values.push(query.status);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = query.limit ?? 50;
+  const result = await db.prepare(`
+    SELECT
+      c.conversation_id,
+      c.app_id,
+      c.app_name,
+      c.workspace_id,
+      c.user_id,
+      c.route,
+      c.screen_name,
+      c.app_version,
+      c.device,
+      c.browser,
+      c.occurred_at,
+      c.status AS conversation_status,
+      c.created_at,
+      c.updated_at,
+      m.body AS latest_message_body,
+      m.created_at AS latest_message_at,
+      a.analysis_id,
+      a.category,
+      a.severity,
+      a.impact,
+      a.confidence,
+      a.summary,
+      a.normalized_problem,
+      a.created_at AS analysis_created_at,
+      fil.issue_id,
+      fil.similarity_score,
+      fil.match_reason,
+      fi.canonical_title,
+      fi.count AS issue_count,
+      fi.priority_score,
+      fi.status AS issue_status
+    FROM feedback_conversations c
+    LEFT JOIN feedback_messages m ON m.message_id = (
+      SELECT message_id
+      FROM feedback_messages
+      WHERE conversation_id = c.conversation_id
+      ORDER BY created_at DESC
+      LIMIT 1
+    )
+    LEFT JOIN feedback_ai_analyses a ON a.analysis_id = (
+      SELECT analysis_id
+      FROM feedback_ai_analyses
+      WHERE conversation_id = c.conversation_id
+      ORDER BY created_at DESC
+      LIMIT 1
+    )
+    LEFT JOIN feedback_issue_links fil ON fil.issue_link_id = (
+      SELECT issue_link_id
+      FROM feedback_issue_links
+      WHERE conversation_id = c.conversation_id
+      ORDER BY created_at DESC
+      LIMIT 1
+    )
+    LEFT JOIN feedback_issues fi ON fi.issue_id = fil.issue_id
+    ${where}
+    ORDER BY c.updated_at DESC
+    LIMIT ?
+  `).bind(...values, limit).all();
+
+  return {
+    items: result.results,
+    filters: {
+      workspaceId: query.workspaceId ?? null,
+      appId: query.appId ?? null,
+      status: query.status ?? null,
+      limit,
+    },
     generatedAt: nowIso(),
   };
 }
