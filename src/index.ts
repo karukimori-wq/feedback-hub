@@ -9,11 +9,14 @@ import {
   getAdminInbox,
   getAdminIntakeMetrics,
   getAdminOverview,
+  getAdminRankings,
   getAdminTriageQueue,
   getConversation,
   getIssueSummary,
   getIssue,
   getPersistenceStatus,
+  getRankedIssues,
+  getRequestRankings,
   getUrgentNotificationSummary,
   listConversations,
   listIssues,
@@ -22,7 +25,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminTriageQueueQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -88,6 +91,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/notifications/urgent/summary',
     'GET /api/admin/inbox',
     'GET /api/admin/intake-metrics',
+    'GET /api/admin/rankings',
     'GET /api/admin/issue-summary',
     'GET /api/admin/triage-queue',
     'GET /api/admin/overview',
@@ -178,9 +182,27 @@ app.post('/api/feedback/issues/:issueId/status', async (c) => {
   return c.json({ status: 'success', statusEvent: result });
 });
 
-app.get('/api/feedback/rankings/bugs', async (c) => c.json({ status: 'success', ranking: await listIssues(c.env.DB, 'Bug') }));
-app.get('/api/feedback/rankings/requests', async (c) => c.json({ status: 'success', ranking: [...await listIssues(c.env.DB, 'Feature Request'), ...await listIssues(c.env.DB, 'Improvement'), ...await listIssues(c.env.DB, 'UX Feedback')] }));
-app.get('/api/feedback/rankings/questions', async (c) => c.json({ status: 'success', ranking: await listIssues(c.env.DB, 'Question') }));
+app.get('/api/feedback/rankings/bugs', async (c) => {
+  const query = rankingQuerySchema.parse({
+    status: c.req.query('status'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', ranking: await getRankedIssues(c.env.DB, 'Bug', { ...query, limit: query.limit ?? 10 }) });
+});
+app.get('/api/feedback/rankings/requests', async (c) => {
+  const query = rankingQuerySchema.parse({
+    status: c.req.query('status'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', ranking: await getRequestRankings(c.env.DB, query) });
+});
+app.get('/api/feedback/rankings/questions', async (c) => {
+  const query = rankingQuerySchema.parse({
+    status: c.req.query('status'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', ranking: await getRankedIssues(c.env.DB, 'Question', query) });
+});
 app.get('/api/feedback/notifications/urgent', async (c) => c.json({ status: 'success', notifications: await urgentNotifications(c.env.DB) }));
 app.get('/api/feedback/notifications/urgent/summary', async (c) => c.json({ status: 'success', summary: await getUrgentNotificationSummary(c.env.DB) }));
 
@@ -209,6 +231,16 @@ app.get('/api/admin/intake-metrics', async (c) => {
     since: c.req.query('since'),
   });
   return c.json({ status: 'success', metrics: await getAdminIntakeMetrics(c.env.DB, query) });
+});
+
+app.get('/api/admin/rankings', async (c) => {
+  const query = adminRankingsQuerySchema.parse({
+    status: c.req.query('status'),
+    bugLimit: c.req.query('bugLimit'),
+    requestLimit: c.req.query('requestLimit'),
+    questionLimit: c.req.query('questionLimit'),
+  });
+  return c.json({ status: 'success', rankings: await getAdminRankings(c.env.DB, query) });
 });
 
 app.get('/api/admin/issue-summary', async (c) => c.json({
