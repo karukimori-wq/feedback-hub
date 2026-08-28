@@ -9,6 +9,7 @@ import type {
   CreateConversationInput,
   CreateFeedbackIntakeInput,
   CreateMessageInput,
+  IssueSourceMessagesQuery,
   ListConversationsQuery,
   ListIssuesQuery,
   RankingQuery,
@@ -334,6 +335,47 @@ export async function getIssue(db: D1Database, issueId: string) {
     db.prepare(`SELECT * FROM feedback_issue_status_events WHERE issue_id = ? ORDER BY created_at DESC`).bind(issueId).all(),
   ]);
   return { issue, links: links.results, sourceConversations: sourceConversations.results, statusEvents: statusEvents.results };
+}
+
+export async function getIssueSourceMessages(db: D1Database, issueId: string, query: IssueSourceMessagesQuery = {}) {
+  const issue = await db.prepare(`SELECT issue_id, canonical_title, normalized_problem FROM feedback_issues WHERE issue_id = ?`).bind(issueId).first();
+  if (!issue) return null;
+
+  const limit = query.limit ?? 100;
+  const result = await db.prepare(`
+    SELECT
+      fil.issue_link_id,
+      fil.similarity_score,
+      fil.match_reason,
+      c.conversation_id,
+      c.app_id,
+      c.app_name,
+      c.workspace_id,
+      c.user_id,
+      c.route,
+      c.screen_name,
+      c.app_version,
+      c.device,
+      c.browser,
+      c.occurred_at,
+      m.message_id,
+      m.role,
+      m.body,
+      m.created_at AS message_created_at
+    FROM feedback_issue_links fil
+    JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+    JOIN feedback_messages m ON m.conversation_id = c.conversation_id
+    WHERE fil.issue_id = ?
+    ORDER BY fil.created_at DESC, m.created_at ASC
+    LIMIT ?
+  `).bind(issueId, limit).all();
+
+  return {
+    issue,
+    messages: result.results,
+    filters: { limit },
+    generatedAt: nowIso(),
+  };
 }
 
 export async function urgentNotifications(db: D1Database) {
