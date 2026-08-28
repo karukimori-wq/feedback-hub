@@ -8,6 +8,7 @@ import {
   createMessage,
   getAdminInbox,
   getAdminOverview,
+  getAdminTriageQueue,
   getConversation,
   getIssueSummary,
   getIssue,
@@ -20,7 +21,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminInboxQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminInboxQuerySchema, adminTriageQueueQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -86,6 +87,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/notifications/urgent/summary',
     'GET /api/admin/inbox',
     'GET /api/admin/issue-summary',
+    'GET /api/admin/triage-queue',
     'GET /api/admin/overview',
   ],
   timestamp: new Date().toISOString(),
@@ -202,6 +204,18 @@ app.get('/api/admin/issue-summary', async (c) => c.json({
   status: 'success',
   summary: await getIssueSummary(c.env.DB),
 }));
+
+app.get('/api/admin/triage-queue', async (c) => {
+  const query = adminTriageQueueQuerySchema.parse({
+    category: c.req.query('category'),
+    status: c.req.query('status'),
+    severity: c.req.query('severity'),
+    impact: c.req.query('impact'),
+    minCount: c.req.query('minCount'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', triageQueue: await getAdminTriageQueue(c.env.DB, query) });
+});
 
 app.notFound((c) => c.json({ status: 'error', errorCode: 'NOT_FOUND' }, 404));
 
