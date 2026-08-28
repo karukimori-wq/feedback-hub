@@ -41,6 +41,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/feedback/notifications/urgent/summary');
     expect(body.endpoints).toContain('GET /api/admin/inbox');
     expect(body.endpoints).toContain('GET /api/admin/issue-summary');
+    expect(body.endpoints).toContain('GET /api/admin/triage-queue');
     expect(body.endpoints).toContain('GET /api/admin/overview');
   });
 
@@ -93,6 +94,24 @@ describe('contract endpoints', () => {
 
   it('validates admin inbox query limits', async () => {
     const response = await app.request('/api/admin/inbox?limit=500', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates admin triage queue query limits', async () => {
+    const response = await app.request('/api/admin/triage-queue?limit=500', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates admin triage queue status values before persistence', async () => {
+    const response = await app.request('/api/admin/triage-queue?status=closed', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };
