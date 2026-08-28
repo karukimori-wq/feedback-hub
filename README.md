@@ -54,6 +54,8 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /api/feedback/issues`
 - `GET /api/feedback/issues/:issueId`
   - Returns the canonical Issue, issue links, source conversation previews, and status history so admins can inspect the original user voice behind an AI summary.
+- `GET /api/feedback/issues/:issueId/source-messages`
+  - Returns the original messages linked to a canonical Issue, preserving the user voice behind AI summaries.
 - `POST /api/feedback/issues/:issueId/status`
 - `GET /api/feedback/rankings/bugs`
 - `GET /api/feedback/rankings/requests`
@@ -99,6 +101,8 @@ npm run deploy
 See `docs/cloudflare-deployment.md` for the first-deploy runbook and production smoke tests.
 
 Issue list filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
+
+Issue source message filters: `limit`.
 
 Admin inbox filters: `workspaceId`, `appId`, `status`, `category`, `severity`, `impact`, and `limit`.
 
