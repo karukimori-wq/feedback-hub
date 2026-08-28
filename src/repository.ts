@@ -6,6 +6,7 @@ import type {
   AdminIntakeMetricsQuery,
   AdminRankingsQuery,
   AdminTriageQueueQuery,
+  ConversationFollowUpsQuery,
   CreateConversationInput,
   CreateFeedbackIntakeInput,
   CreateMessageInput,
@@ -316,7 +317,7 @@ export async function getIssue(db: D1Database, issueId: string) {
         m.body AS latest_message_body,
         m.created_at AS latest_message_at,
         a.summary AS analysis_summary,
-        a.suggested_questions,
+        a.suggested_questions_json,
         a.created_at AS analysis_created_at
       FROM feedback_issue_links fil
       JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
@@ -335,6 +336,42 @@ export async function getIssue(db: D1Database, issueId: string) {
     db.prepare(`SELECT * FROM feedback_issue_status_events WHERE issue_id = ? ORDER BY created_at DESC`).bind(issueId).all(),
   ]);
   return { issue, links: links.results, sourceConversations: sourceConversations.results, statusEvents: statusEvents.results };
+}
+
+export async function getConversationFollowUps(db: D1Database, conversationId: string, query: ConversationFollowUpsQuery = {}) {
+  const conversation = await db.prepare(`SELECT conversation_id, status FROM feedback_conversations WHERE conversation_id = ?`).bind(conversationId).first();
+  if (!conversation) return null;
+
+  const limit = query.limit ?? 5;
+  const analyses = await db.prepare(`
+    SELECT
+      analysis_id,
+      category,
+      severity,
+      impact,
+      confidence,
+      summary,
+      normalized_problem,
+      suggested_questions_json,
+      created_at
+    FROM feedback_ai_analyses
+    WHERE conversation_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?
+  `).bind(conversationId, limit).all<Record<string, unknown>>();
+
+  const items = analyses.results.map((analysis) => ({
+    ...analysis,
+    suggestedQuestions: parseJsonStringArray(analysis.suggested_questions_json),
+  }));
+
+  return {
+    conversation,
+    items,
+    latest: items[0] ?? null,
+    filters: { limit },
+    generatedAt: nowIso(),
+  };
 }
 
 export async function getIssueSourceMessages(db: D1Database, issueId: string, query: IssueSourceMessagesQuery = {}) {
@@ -977,4 +1014,14 @@ export function summarizeUrgentNotifications(notifications: Array<Record<string,
 
 function isUrgencyReason(value: unknown): value is 'critical_severity' | 'critical_impact' | 'repeated_feedback_threshold' {
   return value === 'critical_severity' || value === 'critical_impact' || value === 'repeated_feedback_threshold';
+}
+
+function parseJsonStringArray(value: unknown) {
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
 }
