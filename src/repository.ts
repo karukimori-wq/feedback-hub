@@ -4,12 +4,14 @@ import { newId, nowIso } from './ids';
 import type {
   AdminInboxQuery,
   AdminIntakeMetricsQuery,
+  AdminRankingsQuery,
   AdminTriageQueueQuery,
   CreateConversationInput,
   CreateFeedbackIntakeInput,
   CreateMessageInput,
   ListConversationsQuery,
   ListIssuesQuery,
+  RankingQuery,
   UpdateConversationStatusInput,
   UpdateIssueStatusInput,
 } from './schemas';
@@ -679,6 +681,51 @@ export async function getAdminIntakeMetrics(db: D1Database, query: AdminIntakeMe
       workspaceId: query.workspaceId ?? null,
       appId: query.appId ?? null,
       since: query.since ?? null,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getRankedIssues(db: D1Database, category: ListIssuesQuery['category'], query: RankingQuery = {}) {
+  return listIssues(db, {
+    category,
+    status: query.status ?? 'open',
+    limit: query.limit ?? 20,
+  });
+}
+
+export async function getRequestRankings(db: D1Database, query: RankingQuery = {}) {
+  const status = query.status ?? 'open';
+  const limit = query.limit ?? 20;
+  const result = await db.prepare(`
+    SELECT *
+    FROM feedback_issues
+    WHERE category IN ('Feature Request', 'Improvement', 'UX Feedback')
+      AND status = ?
+    ORDER BY priority_score DESC, count DESC, last_seen_at DESC
+    LIMIT ?
+  `).bind(status, limit).all();
+
+  return result.results;
+}
+
+export async function getAdminRankings(db: D1Database, query: AdminRankingsQuery = {}) {
+  const status = query.status ?? 'open';
+  const [bugs, requests, questions] = await Promise.all([
+    getRankedIssues(db, 'Bug', { status, limit: query.bugLimit ?? 10 }),
+    getRequestRankings(db, { status, limit: query.requestLimit ?? 20 }),
+    getRankedIssues(db, 'Question', { status, limit: query.questionLimit ?? 20 }),
+  ]);
+
+  return {
+    bugs,
+    requests,
+    questions,
+    filters: {
+      status,
+      bugLimit: query.bugLimit ?? 10,
+      requestLimit: query.requestLimit ?? 20,
+      questionLimit: query.questionLimit ?? 20,
     },
     generatedAt: nowIso(),
   };
