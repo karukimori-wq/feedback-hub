@@ -40,6 +40,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('POST /api/feedback/issues/:issueId/status');
     expect(body.endpoints).toContain('GET /api/feedback/notifications/urgent/summary');
     expect(body.endpoints).toContain('GET /api/admin/inbox');
+    expect(body.endpoints).toContain('GET /api/admin/intake-metrics');
     expect(body.endpoints).toContain('GET /api/admin/issue-summary');
     expect(body.endpoints).toContain('GET /api/admin/triage-queue');
     expect(body.endpoints).toContain('GET /api/admin/overview');
@@ -121,6 +122,15 @@ describe('contract endpoints', () => {
 
   it('validates admin inbox analysis filters before persistence', async () => {
     const response = await app.request('/api/admin/inbox?impact=Urgent', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates admin intake metrics date filters before persistence', async () => {
+    const response = await app.request('/api/admin/intake-metrics?since=yesterday', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };
