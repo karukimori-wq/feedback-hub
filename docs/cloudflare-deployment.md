@@ -78,16 +78,31 @@ curl "$WORKER_URL/version"
 curl "$WORKER_URL/contracts/status"
 curl "$WORKER_URL/api/persistence/status"
 curl -X POST "$WORKER_URL/api/persistence/roundtrip"
+curl -X POST "$WORKER_URL/api/feedback/intake" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "appId": "numeria-studio",
+    "appName": "Numeria Studio",
+    "workspaceId": "smoke_workspace",
+    "userId": "smoke_user",
+    "route": "/app/sessions",
+    "screenName": "鑑定セッション",
+    "appVersion": "0.1.0",
+    "device": "smoke",
+    "browser": "smoke",
+    "initialMessage": "保存できない。登録してもデータが残らない"
+  }'
 ```
 
 Expected results:
 
-- `/health` returns `status: "ok"`.
+- `/health` returns `status: "success"`.
 - `/version` returns `appName: "feedback-hub"`.
-- `/contracts/status` includes the persistence endpoints.
+- `/contracts/status` includes the persistence and feedback intake endpoints.
 - `/api/persistence/status` returns `databaseBackedPersistenceReady: true`.
 - `/api/persistence/roundtrip` returns `roundtripReady: true`.
 - `/api/persistence/roundtrip` should return `analysisSource: "ai-platform-core"` when AI Platform Core is reachable.
+- `/api/feedback/intake` returns `intake.status: "accepted"` and either `intake.nextAction: "ask_follow_up"` or `intake.nextAction: "show_received"`.
 
 ## Browser Client Requirements
 
