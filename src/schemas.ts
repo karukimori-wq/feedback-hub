@@ -23,6 +23,10 @@ export const createMessageSchema = z.object({
   body: z.string().min(1),
 });
 
+export const updateConversationStatusSchema = z.object({
+  status: z.enum(['open', 'closed']),
+});
+
 export const listConversationsQuerySchema = z.object({
   workspaceId: z.string().min(1).optional(),
   appId: z.string().min(1).optional(),
@@ -50,4 +54,5 @@ export type CreateFeedbackIntakeInput = z.infer<typeof createFeedbackIntakeSchem
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
 export type ListIssuesQuery = z.infer<typeof listIssuesQuerySchema>;
+export type UpdateConversationStatusInput = z.infer<typeof updateConversationStatusSchema>;
 export type UpdateIssueStatusInput = z.infer<typeof updateIssueStatusSchema>;
