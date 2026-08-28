@@ -34,8 +34,6 @@ export const listConversationsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
-export const adminInboxQuerySchema = listConversationsQuerySchema;
-
 export const listIssuesQuerySchema = z.object({
   category: z.enum(['Question', 'Bug', 'Improvement', 'Feature Request', 'UX Feedback', 'Other']).optional(),
   status: z.enum(['open', 'triaged', 'accepted', 'resolved', 'closed']).optional(),
@@ -43,6 +41,12 @@ export const listIssuesQuerySchema = z.object({
   impact: z.enum(['Critical', 'High', 'Medium', 'Low']).optional(),
   minCount: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+export const adminInboxQuerySchema = listConversationsQuerySchema.extend({
+  category: listIssuesQuerySchema.shape.category,
+  severity: listIssuesQuerySchema.shape.severity,
+  impact: listIssuesQuerySchema.shape.impact,
 });
 
 export const updateIssueStatusSchema = z.object({
