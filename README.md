@@ -58,6 +58,8 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /api/feedback/rankings/requests`
 - `GET /api/feedback/rankings/questions`
 - `GET /api/feedback/notifications/urgent`
+- `GET /api/feedback/notifications/urgent/summary`
+  - Returns urgent notification totals, reason counts, and top priority score for admin badges and alert routing.
 - `GET /api/admin/inbox`
   - Returns recent conversations enriched with the latest message, latest AI analysis, and latest canonical Issue link for admin screens.
 - `GET /api/admin/issue-summary`
