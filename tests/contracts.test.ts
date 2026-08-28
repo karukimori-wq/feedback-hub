@@ -34,6 +34,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/feedback/conversations');
     expect(body.endpoints).toContain('POST /api/feedback/conversations');
     expect(body.endpoints).toContain('GET /api/feedback/conversations/:conversationId');
+    expect(body.endpoints).toContain('GET /api/feedback/conversations/:conversationId/follow-ups');
     expect(body.endpoints).toContain('POST /api/feedback/conversations/:conversationId/status');
     expect(body.endpoints).toContain('GET /api/persistence/status');
     expect(body.endpoints).toContain('POST /api/persistence/roundtrip');
@@ -88,6 +89,15 @@ describe('contract endpoints', () => {
 
   it('validates conversation list query limits', async () => {
     const response = await app.request('/api/feedback/conversations?limit=500', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates conversation follow-up query limits before persistence', async () => {
+    const response = await app.request('/api/feedback/conversations/conv_test/follow-ups?limit=100', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };
