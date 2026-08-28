@@ -349,6 +349,18 @@ export async function getAdminInbox(db: D1Database, query: AdminInboxQuery = {})
     conditions.push('c.status = ?');
     values.push(query.status);
   }
+  if (query.category) {
+    conditions.push('a.category = ?');
+    values.push(query.category);
+  }
+  if (query.severity) {
+    conditions.push('a.severity = ?');
+    values.push(query.severity);
+  }
+  if (query.impact) {
+    conditions.push('a.impact = ?');
+    values.push(query.impact);
+  }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const limit = query.limit ?? 50;
@@ -419,6 +431,9 @@ export async function getAdminInbox(db: D1Database, query: AdminInboxQuery = {})
       workspaceId: query.workspaceId ?? null,
       appId: query.appId ?? null,
       status: query.status ?? null,
+      category: query.category ?? null,
+      severity: query.severity ?? null,
+      impact: query.impact ?? null,
       limit,
     },
     generatedAt: nowIso(),
