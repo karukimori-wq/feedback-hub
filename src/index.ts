@@ -4,6 +4,7 @@ import { APP_NAME, CONTRACT_VERSION } from './domain';
 import {
   analyzeConversation,
   createConversation,
+  createFeedbackIntake,
   createMessage,
   getAdminOverview,
   getIssue,
@@ -13,7 +14,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { createConversationSchema, createMessageSchema, updateIssueStatusSchema } from './schemas';
+import { createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -62,6 +63,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /contracts/status',
     'GET /api/persistence/status',
     'POST /api/persistence/roundtrip',
+    'POST /api/feedback/intake',
     'POST /api/feedback/conversations',
     'POST /api/feedback/conversations/:conversationId/messages',
     'POST /api/feedback/conversations/:conversationId/analyze',
@@ -88,6 +90,12 @@ app.post('/api/persistence/roundtrip', async (c) => c.json({
   status: 'success',
   ...await runPersistenceRoundtrip(c.env.DB, c.env),
 }, 201));
+
+app.post('/api/feedback/intake', async (c) => {
+  const input = createFeedbackIntakeSchema.parse(await c.req.json());
+  const result = await createFeedbackIntake(c.env.DB, c.env, input);
+  return c.json({ status: 'success', ...result }, 201);
+});
 
 app.post('/api/feedback/conversations', async (c) => {
   const input = createConversationSchema.parse(await c.req.json());
