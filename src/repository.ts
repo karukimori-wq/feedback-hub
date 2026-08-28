@@ -7,6 +7,7 @@ import type {
   CreateMessageInput,
   ListConversationsQuery,
   ListIssuesQuery,
+  UpdateConversationStatusInput,
   UpdateIssueStatusInput,
 } from './schemas';
 
@@ -235,6 +236,28 @@ export async function getConversation(db: D1Database, conversationId: string) {
     conversation,
     messages: messages.results,
     analyses: analyses.results,
+  };
+}
+
+export async function updateConversationStatus(db: D1Database, conversationId: string, input: UpdateConversationStatusInput) {
+  const conversation = await db.prepare(`SELECT conversation_id, status FROM feedback_conversations WHERE conversation_id = ?`).bind(conversationId).first<{
+    conversation_id: string;
+    status: string;
+  }>();
+  if (!conversation) return null;
+
+  const updatedAt = nowIso();
+  await db.prepare(`UPDATE feedback_conversations SET status = ?, updated_at = ? WHERE conversation_id = ?`).bind(
+    input.status,
+    updatedAt,
+    conversationId,
+  ).run();
+
+  return {
+    conversationId,
+    previousStatus: conversation.status,
+    nextStatus: input.status,
+    updatedAt,
   };
 }
 
