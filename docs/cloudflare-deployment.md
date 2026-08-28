@@ -86,6 +86,7 @@ curl "$WORKER_URL/api/feedback/issues/YOUR_ISSUE_ID"
 curl "$WORKER_URL/api/feedback/issues/YOUR_ISSUE_ID/source-messages?limit=50"
 curl "$WORKER_URL/api/feedback/notifications/urgent"
 curl "$WORKER_URL/api/feedback/notifications/urgent/summary"
+curl "$WORKER_URL/api/admin/follow-up-queue?limit=10"
 curl "$WORKER_URL/api/admin/inbox?limit=10"
 curl "$WORKER_URL/api/admin/inbox?severity=Critical&impact=Critical&limit=10"
 curl "$WORKER_URL/api/admin/intake-metrics"
@@ -127,6 +128,7 @@ Expected results:
 - `/api/feedback/issues/YOUR_ISSUE_ID/source-messages?limit=50` returns original messages linked to the canonical Issue.
 - `/api/feedback/notifications/urgent` returns `urgencyReasons` for each notification candidate.
 - `/api/feedback/notifications/urgent/summary` returns urgent totals, reason counts, and top priority score.
+- `/api/admin/follow-up-queue?limit=10` returns open conversations with AI-suggested follow-up questions.
 - `/api/admin/inbox?limit=10` returns recent conversations enriched with the latest message, AI analysis, and Issue link.
 - `/api/admin/inbox?severity=Critical&impact=Critical&limit=10` returns admin inbox items narrowed to high-priority AI analysis results.
 - `/api/admin/intake-metrics` returns intake, analysis, issue, urgent issue, app, and category totals for admin summary cards.
