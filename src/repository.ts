@@ -1,7 +1,7 @@
 import { analyzeWithAiPlatformCore, type AiPlatformCoreEnv } from './ai-platform-core';
 import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
 import { newId, nowIso } from './ids';
-import type { CreateConversationInput, CreateMessageInput, UpdateIssueStatusInput } from './schemas';
+import type { CreateConversationInput, CreateFeedbackIntakeInput, CreateMessageInput, UpdateIssueStatusInput } from './schemas';
 
 export async function getPersistenceStatus(db: D1Database) {
   const checkedAt = nowIso();
@@ -49,6 +49,8 @@ export async function runPersistenceRoundtrip(db: D1Database, env: AiPlatformCor
     conversationId: conversation.conversationId,
     issueId: analysis.issue.issueId,
     linkedToExisting: analysis.issue.linkedToExisting,
+    analysisSource: analysis.analysisSource,
+    fallbackUsed: analysis.fallbackUsed,
   };
 }
 
@@ -85,6 +87,30 @@ export async function createConversation(db: D1Database, input: CreateConversati
   }
 
   return { conversationId, conversationStatus: 'open', initialMessage };
+}
+
+export async function createFeedbackIntake(db: D1Database, env: AiPlatformCoreEnv, input: CreateFeedbackIntakeInput) {
+  const conversation = await createConversation(db, input);
+  const analysis = await analyzeConversation(db, conversation.conversationId, env);
+  const nextAction = decideIntakeNextAction(analysis.analysis.suggestedQuestions);
+
+  return {
+    conversationId: conversation.conversationId,
+    messageId: conversation.initialMessage?.messageId,
+    analysisId: analysis.analysisId,
+    issue: analysis.issue,
+    analysis: analysis.analysis,
+    analysisSource: analysis.analysisSource,
+    fallbackUsed: analysis.fallbackUsed,
+    intake: {
+      status: 'accepted',
+      nextAction,
+      followUpQuestions: analysis.analysis.suggestedQuestions,
+      urgency: analysis.analysis.severity === 'Critical' || analysis.analysis.impact === 'Critical'
+        ? 'urgent_candidate'
+        : 'normal',
+    },
+  };
 }
 
 export async function createMessage(db: D1Database, conversationId: string, input: CreateMessageInput) {
@@ -321,4 +347,8 @@ async function assertConversationExists(db: D1Database, conversationId: string) 
 function strongest(a: string, b: string): string {
   const order = ['Low', 'Medium', 'High', 'Critical'];
   return order.indexOf(a) >= order.indexOf(b) ? a : b;
+}
+
+function decideIntakeNextAction(suggestedQuestions: string[]) {
+  return suggestedQuestions.length > 0 ? 'ask_follow_up' : 'show_received';
 }
