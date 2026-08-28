@@ -48,6 +48,8 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `POST /api/feedback/conversations`
 - `GET /api/feedback/conversations/:conversationId`
   - Returns the raw conversation, messages, AI analyses, and `issueLinks` to inspect which canonical Issue the feedback was merged into.
+- `GET /api/feedback/conversations/:conversationId/follow-ups`
+  - Returns the latest AI-suggested follow-up questions for a conversation.
 - `POST /api/feedback/conversations/:conversationId/messages`
 - `POST /api/feedback/conversations/:conversationId/analyze`
 - `POST /api/feedback/conversations/:conversationId/status`
@@ -103,6 +105,8 @@ See `docs/cloudflare-deployment.md` for the first-deploy runbook and production 
 Issue list filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
 
 Issue source message filters: `limit`.
+
+Conversation follow-up filters: `limit`.
 
 Admin inbox filters: `workspaceId`, `appId`, `status`, `category`, `severity`, `impact`, and `limit`.
 
