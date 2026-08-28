@@ -1,7 +1,13 @@
 import { analyzeWithAiPlatformCore, type AiPlatformCoreEnv } from './ai-platform-core';
 import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
 import { newId, nowIso } from './ids';
-import type { CreateConversationInput, CreateFeedbackIntakeInput, CreateMessageInput, UpdateIssueStatusInput } from './schemas';
+import type {
+  CreateConversationInput,
+  CreateFeedbackIntakeInput,
+  CreateMessageInput,
+  ListConversationsQuery,
+  UpdateIssueStatusInput,
+} from './schemas';
 
 export async function getPersistenceStatus(db: D1Database) {
   const checkedAt = nowIso();
@@ -161,6 +167,32 @@ export async function listIssues(db: D1Database, category?: string) {
     ? `SELECT * FROM feedback_issues WHERE category = ? ORDER BY priority_score DESC, last_seen_at DESC LIMIT 100`
     : `SELECT * FROM feedback_issues ORDER BY priority_score DESC, last_seen_at DESC LIMIT 100`;
   const result = category ? await db.prepare(sql).bind(category).all() : await db.prepare(sql).all();
+  return result.results;
+}
+
+export async function listConversations(db: D1Database, query: ListConversationsQuery = {}) {
+  const conditions = [];
+  const values = [];
+
+  if (query.workspaceId) {
+    conditions.push('workspace_id = ?');
+    values.push(query.workspaceId);
+  }
+  if (query.appId) {
+    conditions.push('app_id = ?');
+    values.push(query.appId);
+  }
+  if (query.status) {
+    conditions.push('status = ?');
+    values.push(query.status);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = query.limit ?? 50;
+  const result = await db.prepare(`SELECT * FROM feedback_conversations ${where} ORDER BY updated_at DESC LIMIT ?`)
+    .bind(...values, limit)
+    .all();
+
   return result.results;
 }
 
