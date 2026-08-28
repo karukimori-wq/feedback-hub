@@ -6,6 +6,7 @@ import {
   createConversation,
   createFeedbackIntake,
   createMessage,
+  getAdminInbox,
   getAdminOverview,
   getConversation,
   getIssueSummary,
@@ -18,7 +19,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminInboxQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, listConversationsQuerySchema, listIssuesQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -81,6 +82,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/rankings/requests',
     'GET /api/feedback/rankings/questions',
     'GET /api/feedback/notifications/urgent',
+    'GET /api/admin/inbox',
     'GET /api/admin/issue-summary',
     'GET /api/admin/overview',
   ],
@@ -179,6 +181,16 @@ app.get('/api/admin/overview', async (c) => c.json({
   status: 'success',
   overview: await getAdminOverview(c.env.DB),
 }));
+
+app.get('/api/admin/inbox', async (c) => {
+  const query = adminInboxQuerySchema.parse({
+    workspaceId: c.req.query('workspaceId'),
+    appId: c.req.query('appId'),
+    status: c.req.query('status'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', inbox: await getAdminInbox(c.env.DB, query) });
+});
 
 app.get('/api/admin/issue-summary', async (c) => c.json({
   status: 'success',
