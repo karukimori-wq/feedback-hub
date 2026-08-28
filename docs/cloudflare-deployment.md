@@ -79,6 +79,7 @@ curl "$WORKER_URL/contracts/status"
 curl "$WORKER_URL/api/persistence/status"
 curl -X POST "$WORKER_URL/api/persistence/roundtrip"
 curl "$WORKER_URL/api/feedback/conversations?limit=10"
+curl "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID"
 curl "$WORKER_URL/api/feedback/issues?status=open&severity=Critical&limit=10"
 curl "$WORKER_URL/api/feedback/notifications/urgent"
 curl "$WORKER_URL/api/admin/issue-summary"
@@ -110,6 +111,7 @@ Expected results:
 - `/api/persistence/roundtrip` returns `roundtripReady: true`.
 - `/api/persistence/roundtrip` should return `analysisSource: "ai-platform-core"` when AI Platform Core is reachable.
 - `/api/feedback/conversations?limit=10` returns recent conversations for the admin list.
+- `/api/feedback/conversations/YOUR_CONVERSATION_ID` returns the raw messages, AI analyses, and `issueLinks` to inspect the canonical Issue mapping.
 - `/api/feedback/issues?status=open&severity=Critical&limit=10` returns filtered issues for the admin list.
 - `/api/feedback/notifications/urgent` returns `urgencyReasons` for each notification candidate.
 - `/api/admin/issue-summary` returns issue breakdowns by category, status, severity, and impact.
