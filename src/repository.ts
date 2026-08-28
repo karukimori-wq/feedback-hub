@@ -164,6 +164,21 @@ export async function listIssues(db: D1Database, category?: string) {
   return result.results;
 }
 
+export async function getConversation(db: D1Database, conversationId: string) {
+  const conversation = await db.prepare(`SELECT * FROM feedback_conversations WHERE conversation_id = ?`).bind(conversationId).first();
+  if (!conversation) return null;
+  const [messages, analyses] = await Promise.all([
+    db.prepare(`SELECT * FROM feedback_messages WHERE conversation_id = ? ORDER BY created_at ASC`).bind(conversationId).all(),
+    db.prepare(`SELECT * FROM feedback_ai_analyses WHERE conversation_id = ? ORDER BY created_at DESC`).bind(conversationId).all(),
+  ]);
+
+  return {
+    conversation,
+    messages: messages.results,
+    analyses: analyses.results,
+  };
+}
+
 export async function getIssue(db: D1Database, issueId: string) {
   const issue = await db.prepare(`SELECT * FROM feedback_issues WHERE issue_id = ?`).bind(issueId).first();
   if (!issue) return null;
