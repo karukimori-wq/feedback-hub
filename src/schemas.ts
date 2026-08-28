@@ -34,6 +34,8 @@ export const listConversationsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
+export const adminInboxQuerySchema = listConversationsQuerySchema;
+
 export const listIssuesQuerySchema = z.object({
   category: z.enum(['Question', 'Bug', 'Improvement', 'Feature Request', 'UX Feedback', 'Other']).optional(),
   status: z.enum(['open', 'triaged', 'accepted', 'resolved', 'closed']).optional(),
@@ -53,6 +55,7 @@ export type CreateConversationInput = z.infer<typeof createConversationSchema>;
 export type CreateFeedbackIntakeInput = z.infer<typeof createFeedbackIntakeSchema>;
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
+export type AdminInboxQuery = z.infer<typeof adminInboxQuerySchema>;
 export type ListIssuesQuery = z.infer<typeof listIssuesQuerySchema>;
 export type UpdateConversationStatusInput = z.infer<typeof updateConversationStatusSchema>;
 export type UpdateIssueStatusInput = z.infer<typeof updateIssueStatusSchema>;
