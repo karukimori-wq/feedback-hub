@@ -82,6 +82,7 @@ curl "$WORKER_URL/api/feedback/conversations?limit=10"
 curl "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID"
 curl "$WORKER_URL/api/feedback/issues?status=open&severity=Critical&limit=10"
 curl "$WORKER_URL/api/feedback/notifications/urgent"
+curl "$WORKER_URL/api/admin/inbox?limit=10"
 curl "$WORKER_URL/api/admin/issue-summary"
 curl -X POST "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID/status" \
   -H "Content-Type: application/json" \
@@ -114,6 +115,7 @@ Expected results:
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID` returns the raw messages, AI analyses, and `issueLinks` to inspect the canonical Issue mapping.
 - `/api/feedback/issues?status=open&severity=Critical&limit=10` returns filtered issues for the admin list.
 - `/api/feedback/notifications/urgent` returns `urgencyReasons` for each notification candidate.
+- `/api/admin/inbox?limit=10` returns recent conversations enriched with the latest message, AI analysis, and Issue link.
 - `/api/admin/issue-summary` returns issue breakdowns by category, status, severity, and impact.
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID/status` returns a conversation status transition event.
 - `/api/feedback/intake` returns `intake.status: "accepted"` and either `intake.nextAction: "ask_follow_up"` or `intake.nextAction: "show_received"`.
