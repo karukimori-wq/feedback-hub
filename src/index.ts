@@ -7,6 +7,7 @@ import {
   createFeedbackIntake,
   createMessage,
   getAdminOverview,
+  getConversation,
   getIssue,
   getPersistenceStatus,
   listIssues,
@@ -65,6 +66,7 @@ app.get('/contracts/status', (c) => c.json({
     'POST /api/persistence/roundtrip',
     'POST /api/feedback/intake',
     'POST /api/feedback/conversations',
+    'GET /api/feedback/conversations/:conversationId',
     'POST /api/feedback/conversations/:conversationId/messages',
     'POST /api/feedback/conversations/:conversationId/analyze',
     'GET /api/feedback/issues',
@@ -101,6 +103,12 @@ app.post('/api/feedback/conversations', async (c) => {
   const input = createConversationSchema.parse(await c.req.json());
   const result = await createConversation(c.env.DB, input);
   return c.json({ status: 'success', ...result }, 201);
+});
+
+app.get('/api/feedback/conversations/:conversationId', async (c) => {
+  const result = await getConversation(c.env.DB, c.req.param('conversationId'));
+  if (!result) return c.json({ status: 'error', errorCode: 'CONVERSATION_NOT_FOUND' }, 404);
+  return c.json({ status: 'success', ...result });
 });
 
 app.post('/api/feedback/conversations/:conversationId/messages', async (c) => {
