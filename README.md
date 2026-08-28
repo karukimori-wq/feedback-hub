@@ -64,6 +64,8 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /api/admin/inbox`
   - Returns recent conversations enriched with the latest message, latest AI analysis, and latest canonical Issue link for admin screens.
 - `GET /api/admin/issue-summary`
+- `GET /api/admin/triage-queue`
+  - Returns open or triaged Issues sorted by priority with source conversation counts and the latest user-message preview.
 - `GET /api/admin/overview`
 
 ## Development
@@ -95,6 +97,8 @@ See `docs/cloudflare-deployment.md` for the first-deploy runbook and production 
 Issue list filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
 
 Admin inbox filters: `workspaceId`, `appId`, `status`, `category`, `severity`, `impact`, and `limit`.
+
+Admin triage queue filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
 
 ## Platform Contract
 
