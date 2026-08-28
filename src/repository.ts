@@ -301,6 +301,11 @@ export async function urgentNotifications(db: D1Database) {
   }));
 }
 
+export async function getUrgentNotificationSummary(db: D1Database) {
+  const notifications = await urgentNotifications(db);
+  return summarizeUrgentNotifications(notifications);
+}
+
 export async function getAdminOverview(db: D1Database) {
   const [totalIssues, openIssues, conversations, analyses, categoryCounts, urgent, bugTop, requestTop, questionTop] = await Promise.all([
     db.prepare(`SELECT COUNT(*) AS count FROM feedback_issues`).first<{ count: number }>(),
@@ -609,4 +614,39 @@ export function explainUrgency(issue: Record<string, unknown>) {
   if (issue.impact === 'Critical') reasons.push('critical_impact');
   if (Number(issue.count ?? 0) >= 30) reasons.push('repeated_feedback_threshold');
   return reasons;
+}
+
+export function summarizeUrgentNotifications(notifications: Array<Record<string, unknown>>) {
+  type UrgencyReason = 'critical_severity' | 'critical_impact' | 'repeated_feedback_threshold';
+  const byReason = {
+    critical_severity: 0,
+    critical_impact: 0,
+    repeated_feedback_threshold: 0,
+  } satisfies Record<UrgencyReason, number>;
+  let topPriorityScore = 0;
+
+  for (const notification of notifications) {
+    const reasons = Array.isArray(notification.urgencyReasons)
+      ? notification.urgencyReasons
+      : explainUrgency(notification);
+    for (const reason of reasons) {
+      if (isUrgencyReason(reason)) {
+        byReason[reason] += 1;
+      }
+    }
+    topPriorityScore = Math.max(topPriorityScore, Number(notification.priority_score ?? 0));
+  }
+
+  return {
+    total: notifications.length,
+    byReason,
+    hasCritical: notifications.length > 0,
+    notificationLevel: notifications.length > 0 ? 'critical' : 'none',
+    topPriorityScore,
+    generatedAt: nowIso(),
+  };
+}
+
+function isUrgencyReason(value: unknown): value is 'critical_severity' | 'critical_impact' | 'repeated_feedback_threshold' {
+  return value === 'critical_severity' || value === 'critical_impact' || value === 'repeated_feedback_threshold';
 }
