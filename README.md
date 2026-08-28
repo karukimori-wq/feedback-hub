@@ -43,6 +43,7 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /contracts/status`
 - `GET /api/persistence/status`
 - `POST /api/persistence/roundtrip`
+- `POST /api/feedback/intake`
 - `POST /api/feedback/conversations`
 - `POST /api/feedback/conversations/:conversationId/messages`
 - `POST /api/feedback/conversations/:conversationId/analyze`
