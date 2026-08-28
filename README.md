@@ -65,6 +65,8 @@ The deterministic classifier is fallback-only for local development, tests, and 
   - Returns recent conversations enriched with the latest message, latest AI analysis, and latest canonical Issue link for admin screens.
 - `GET /api/admin/intake-metrics`
   - Returns intake totals, AI analysis totals, Issue totals, urgent Issue totals, app breakdowns, and category breakdowns for admin summary cards.
+- `GET /api/admin/rankings`
+  - Returns Bug TOP10, request TOP20, and question TOP20 rankings for admin dashboard sections.
 - `GET /api/admin/issue-summary`
 - `GET /api/admin/triage-queue`
   - Returns open or triaged Issues sorted by priority with source conversation counts and the latest user-message preview.
@@ -101,6 +103,10 @@ Issue list filters: `category`, `status`, `severity`, `impact`, `minCount`, and 
 Admin inbox filters: `workspaceId`, `appId`, `status`, `category`, `severity`, `impact`, and `limit`.
 
 Admin intake metrics filters: `workspaceId`, `appId`, and `since`.
+
+Feedback ranking filters: `status` and `limit`.
+
+Admin ranking filters: `status`, `bugLimit`, `requestLimit`, and `questionLimit`.
 
 Admin triage queue filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
 
