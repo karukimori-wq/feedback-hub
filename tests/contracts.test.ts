@@ -46,6 +46,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/admin/intake-metrics');
     expect(body.endpoints).toContain('GET /api/admin/metadata-quality');
     expect(body.endpoints).toContain('GET /api/admin/rankings');
+    expect(body.endpoints).toContain('GET /api/admin/status-activity');
     expect(body.endpoints).toContain('GET /api/admin/issue-summary');
     expect(body.endpoints).toContain('GET /api/admin/triage-queue');
     expect(body.endpoints).toContain('GET /api/admin/overview');
@@ -190,6 +191,15 @@ describe('contract endpoints', () => {
 
   it('validates admin ranking query limits before persistence', async () => {
     const response = await app.request('/api/admin/rankings?requestLimit=500', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates admin status activity filters before persistence', async () => {
+    const response = await app.request('/api/admin/status-activity?nextStatus=done', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };
