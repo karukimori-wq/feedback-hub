@@ -12,6 +12,7 @@ import {
   getAdminMetadataQuality,
   getAdminOverview,
   getAdminRankings,
+  getAdminStatusActivity,
   getAdminTriageQueue,
   getConversation,
   getConversationFollowUps,
@@ -29,7 +30,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -100,6 +101,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/intake-metrics',
     'GET /api/admin/metadata-quality',
     'GET /api/admin/rankings',
+    'GET /api/admin/status-activity',
     'GET /api/admin/issue-summary',
     'GET /api/admin/triage-queue',
     'GET /api/admin/overview',
@@ -285,6 +287,16 @@ app.get('/api/admin/rankings', async (c) => {
     questionLimit: c.req.query('questionLimit'),
   });
   return c.json({ status: 'success', rankings: await getAdminRankings(c.env.DB, query) });
+});
+
+app.get('/api/admin/status-activity', async (c) => {
+  const query = adminStatusActivityQuerySchema.parse({
+    issueId: c.req.query('issueId'),
+    nextStatus: c.req.query('nextStatus'),
+    since: c.req.query('since'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', statusActivity: await getAdminStatusActivity(c.env.DB, query) });
 });
 
 app.get('/api/admin/issue-summary', async (c) => c.json({
