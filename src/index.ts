@@ -9,6 +9,7 @@ import {
   getAdminFollowUpQueue,
   getAdminInbox,
   getAdminIntakeMetrics,
+  getAdminMetadataQuality,
   getAdminOverview,
   getAdminRankings,
   getAdminTriageQueue,
@@ -28,7 +29,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -97,6 +98,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/follow-up-queue',
     'GET /api/admin/inbox',
     'GET /api/admin/intake-metrics',
+    'GET /api/admin/metadata-quality',
     'GET /api/admin/rankings',
     'GET /api/admin/issue-summary',
     'GET /api/admin/triage-queue',
@@ -264,6 +266,15 @@ app.get('/api/admin/intake-metrics', async (c) => {
     since: c.req.query('since'),
   });
   return c.json({ status: 'success', metrics: await getAdminIntakeMetrics(c.env.DB, query) });
+});
+
+app.get('/api/admin/metadata-quality', async (c) => {
+  const query = adminMetadataQualityQuerySchema.parse({
+    workspaceId: c.req.query('workspaceId'),
+    appId: c.req.query('appId'),
+    since: c.req.query('since'),
+  });
+  return c.json({ status: 'success', metadataQuality: await getAdminMetadataQuality(c.env.DB, query) });
 });
 
 app.get('/api/admin/rankings', async (c) => {
