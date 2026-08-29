@@ -7,6 +7,7 @@ import type {
   AdminIntakeMetricsQuery,
   AdminMetadataQualityQuery,
   AdminRankingsQuery,
+  AdminStatusActivityQuery,
   AdminTriageQueueQuery,
   ConversationFollowUpsQuery,
   CreateConversationInput,
@@ -910,6 +911,60 @@ export async function getAdminMetadataQuality(db: D1Database, query: AdminMetada
       workspaceId: query.workspaceId ?? null,
       appId: query.appId ?? null,
       since: query.since ?? null,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getAdminStatusActivity(db: D1Database, query: AdminStatusActivityQuery = {}) {
+  const conditions = [];
+  const values = [];
+
+  if (query.issueId) {
+    conditions.push('e.issue_id = ?');
+    values.push(query.issueId);
+  }
+  if (query.nextStatus) {
+    conditions.push('e.next_status = ?');
+    values.push(query.nextStatus);
+  }
+  if (query.since) {
+    conditions.push('e.created_at >= ?');
+    values.push(query.since);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = query.limit ?? 50;
+  const result = await db.prepare(`
+    SELECT
+      e.status_event_id,
+      e.issue_id,
+      e.previous_status,
+      e.next_status,
+      e.changed_by,
+      e.note,
+      e.created_at,
+      fi.canonical_title,
+      fi.category,
+      fi.severity,
+      fi.impact,
+      fi.count,
+      fi.priority_score,
+      fi.status AS current_status
+    FROM feedback_issue_status_events e
+    JOIN feedback_issues fi ON fi.issue_id = e.issue_id
+    ${where}
+    ORDER BY e.created_at DESC
+    LIMIT ?
+  `).bind(...values, limit).all();
+
+  return {
+    items: result.results,
+    filters: {
+      issueId: query.issueId ?? null,
+      nextStatus: query.nextStatus ?? null,
+      since: query.since ?? null,
+      limit,
     },
     generatedAt: nowIso(),
   };
