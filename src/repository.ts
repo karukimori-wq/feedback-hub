@@ -5,6 +5,7 @@ import type {
   AdminInboxQuery,
   AdminFollowUpQueueQuery,
   AdminIntakeMetricsQuery,
+  AdminMetadataQualityQuery,
   AdminRankingsQuery,
   AdminTriageQueueQuery,
   ConversationFollowUpsQuery,
@@ -838,12 +839,100 @@ export async function getAdminIntakeMetrics(db: D1Database, query: AdminIntakeMe
   };
 }
 
+export async function getAdminMetadataQuality(db: D1Database, query: AdminMetadataQualityQuery = {}) {
+  const conditions = [];
+  const values = [];
+
+  if (query.workspaceId) {
+    conditions.push('workspace_id = ?');
+    values.push(query.workspaceId);
+  }
+  if (query.appId) {
+    conditions.push('app_id = ?');
+    values.push(query.appId);
+  }
+  if (query.since) {
+    conditions.push('created_at >= ?');
+    values.push(query.since);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const row = await db.prepare(`
+    SELECT
+      COUNT(*) AS totalConversations,
+      SUM(CASE WHEN app_id IS NULL OR app_id = '' THEN 1 ELSE 0 END) AS missingAppId,
+      SUM(CASE WHEN app_name IS NULL OR app_name = '' THEN 1 ELSE 0 END) AS missingAppName,
+      SUM(CASE WHEN workspace_id IS NULL OR workspace_id = '' THEN 1 ELSE 0 END) AS missingWorkspaceId,
+      SUM(CASE WHEN user_id IS NULL OR user_id = '' THEN 1 ELSE 0 END) AS missingUserId,
+      SUM(CASE WHEN app_version IS NULL OR app_version = '' THEN 1 ELSE 0 END) AS missingAppVersion,
+      SUM(CASE WHEN route IS NULL OR route = '' THEN 1 ELSE 0 END) AS missingRoute,
+      SUM(CASE WHEN screen_name IS NULL OR screen_name = '' THEN 1 ELSE 0 END) AS missingScreenName,
+      SUM(CASE WHEN device IS NULL OR device = '' THEN 1 ELSE 0 END) AS missingDevice,
+      SUM(CASE WHEN browser IS NULL OR browser = '' THEN 1 ELSE 0 END) AS missingBrowser,
+      SUM(CASE WHEN occurred_at IS NULL OR occurred_at = '' THEN 1 ELSE 0 END) AS missingOccurredAt
+    FROM feedback_conversations
+    ${where}
+  `).bind(...values).first<{
+    totalConversations: number;
+    missingAppId: number | null;
+    missingAppName: number | null;
+    missingWorkspaceId: number | null;
+    missingUserId: number | null;
+    missingAppVersion: number | null;
+    missingRoute: number | null;
+    missingScreenName: number | null;
+    missingDevice: number | null;
+    missingBrowser: number | null;
+    missingOccurredAt: number | null;
+  }>();
+
+  const totalConversations = Number(row?.totalConversations ?? 0);
+  const fields = [
+    metadataQualityField('appId', row?.missingAppId, totalConversations),
+    metadataQualityField('appName', row?.missingAppName, totalConversations),
+    metadataQualityField('workspaceId', row?.missingWorkspaceId, totalConversations),
+    metadataQualityField('userId', row?.missingUserId, totalConversations),
+    metadataQualityField('appVersion', row?.missingAppVersion, totalConversations),
+    metadataQualityField('route', row?.missingRoute, totalConversations),
+    metadataQualityField('screenName', row?.missingScreenName, totalConversations),
+    metadataQualityField('device', row?.missingDevice, totalConversations),
+    metadataQualityField('browser', row?.missingBrowser, totalConversations),
+    metadataQualityField('occurredAt', row?.missingOccurredAt, totalConversations),
+  ];
+  const presentValues = fields.reduce((sum, field) => sum + field.present, 0);
+  const possibleValues = fields.length * totalConversations;
+
+  return {
+    totalConversations,
+    completenessRate: possibleValues > 0 ? presentValues / possibleValues : 1,
+    fields,
+    filters: {
+      workspaceId: query.workspaceId ?? null,
+      appId: query.appId ?? null,
+      since: query.since ?? null,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
 export async function getRankedIssues(db: D1Database, category: ListIssuesQuery['category'], query: RankingQuery = {}) {
   return listIssues(db, {
     category,
     status: query.status ?? 'open',
     limit: query.limit ?? 20,
   });
+}
+
+function metadataQualityField(field: string, missingValue: number | null | undefined, total: number) {
+  const missing = Number(missingValue ?? 0);
+  const present = Math.max(total - missing, 0);
+
+  return {
+    field,
+    missing,
+    present,
+    completenessRate: total > 0 ? present / total : 1,
+  };
 }
 
 export async function getRequestRankings(db: D1Database, query: RankingQuery = {}) {
