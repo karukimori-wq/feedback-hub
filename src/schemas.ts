@@ -77,6 +77,11 @@ export const adminStatusActivityQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
+export const adminActionBoardQuerySchema = z.object({
+  status: z.enum(['open', 'triaged', 'accepted']).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+});
+
 export const rankingQuerySchema = z.object({
   status: z.enum(['open', 'triaged', 'accepted', 'resolved', 'closed']).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
@@ -114,6 +119,7 @@ export type CreateFeedbackIntakeInput = z.infer<typeof createFeedbackIntakeSchem
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 export type ConversationFollowUpsQuery = z.infer<typeof conversationFollowUpsQuerySchema>;
 export type AdminFollowUpQueueQuery = z.infer<typeof adminFollowUpQueueQuerySchema>;
+export type AdminActionBoardQuery = z.infer<typeof adminActionBoardQuerySchema>;
 export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
 export type AdminInboxQuery = z.infer<typeof adminInboxQuerySchema>;
 export type AdminIntakeMetricsQuery = z.infer<typeof adminIntakeMetricsQuerySchema>;
