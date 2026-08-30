@@ -66,7 +66,7 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /api/feedback/notifications/urgent/summary`
   - Returns urgent notification totals, reason counts, and top priority score for admin badges and alert routing.
 - `GET /api/admin/action-board`
-  - Returns prioritized Issues with urgency reasons and recommended admin actions.
+  - Returns prioritized Issues with urgency reasons, recommended admin actions, and action reason codes.
 - `GET /api/admin/follow-up-queue`
   - Returns open conversations where the latest AI analysis suggested follow-up questions.
 - `GET /api/admin/inbox`
