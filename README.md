@@ -73,6 +73,8 @@ The deterministic classifier is fallback-only for local development, tests, and 
   - Returns recent conversations enriched with the latest message, latest AI analysis, and latest canonical Issue link for admin screens.
 - `GET /api/admin/intake-metrics`
   - Returns intake totals, AI analysis totals, Issue totals, urgent Issue totals, app breakdowns, and category breakdowns for admin summary cards.
+- `GET /api/admin/issue-briefs`
+  - Returns development-ready Issue briefs with priority context, representative source feedback, urgency reasons, and recommended admin actions.
 - `GET /api/admin/metadata-quality`
   - Returns metadata completeness for automatically collected conversation context such as app version, route, screen, device, browser, and occurred time.
 - `GET /api/admin/rankings`
@@ -121,6 +123,8 @@ Admin follow-up queue filters: `workspaceId`, `appId`, and `limit`.
 Admin inbox filters: `workspaceId`, `appId`, `status`, `category`, `severity`, `impact`, and `limit`.
 
 Admin intake metrics filters: `workspaceId`, `appId`, and `since`.
+
+Admin issue brief filters: `category`, `status`, and `limit`.
 
 Admin metadata quality filters: `workspaceId`, `appId`, and `since`.
 
