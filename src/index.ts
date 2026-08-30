@@ -6,6 +6,7 @@ import {
   createConversation,
   createFeedbackIntake,
   createMessage,
+  getAdminActionBoard,
   getAdminFollowUpQueue,
   getAdminInbox,
   getAdminIntakeMetrics,
@@ -30,7 +31,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminActionBoardQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -96,6 +97,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/rankings/questions',
     'GET /api/feedback/notifications/urgent',
     'GET /api/feedback/notifications/urgent/summary',
+    'GET /api/admin/action-board',
     'GET /api/admin/follow-up-queue',
     'GET /api/admin/inbox',
     'GET /api/admin/intake-metrics',
@@ -238,6 +240,14 @@ app.get('/api/admin/overview', async (c) => c.json({
   status: 'success',
   overview: await getAdminOverview(c.env.DB),
 }));
+
+app.get('/api/admin/action-board', async (c) => {
+  const query = adminActionBoardQuerySchema.parse({
+    status: c.req.query('status'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', actionBoard: await getAdminActionBoard(c.env.DB, query) });
+});
 
 app.get('/api/admin/follow-up-queue', async (c) => {
   const query = adminFollowUpQueueQuerySchema.parse({
