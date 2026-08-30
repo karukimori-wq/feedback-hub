@@ -65,6 +65,8 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /api/feedback/notifications/urgent`
 - `GET /api/feedback/notifications/urgent/summary`
   - Returns urgent notification totals, reason counts, and top priority score for admin badges and alert routing.
+- `GET /api/admin/action-board`
+  - Returns prioritized Issues with urgency reasons and recommended admin actions.
 - `GET /api/admin/follow-up-queue`
   - Returns open conversations where the latest AI analysis suggested follow-up questions.
 - `GET /api/admin/inbox`
@@ -121,6 +123,8 @@ Admin inbox filters: `workspaceId`, `appId`, `status`, `category`, `severity`, `
 Admin intake metrics filters: `workspaceId`, `appId`, and `since`.
 
 Admin metadata quality filters: `workspaceId`, `appId`, and `since`.
+
+Admin action board filters: `status` and `limit`.
 
 Feedback ranking filters: `status` and `limit`.
 
