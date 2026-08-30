@@ -4,6 +4,7 @@ import { newId, nowIso } from './ids';
 import type {
   AdminActionBoardQuery,
   AdminInboxQuery,
+  AdminIssueBriefsQuery,
   AdminFollowUpQueueQuery,
   AdminIntakeMetricsQuery,
   AdminMetadataQualityQuery,
@@ -1053,6 +1054,108 @@ export async function getAdminActionBoard(db: D1Database, query: AdminActionBoar
     },
     filters: {
       status,
+      limit,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getAdminIssueBriefs(db: D1Database, query: AdminIssueBriefsQuery = {}) {
+  const conditions = [];
+  const values = [];
+
+  if (query.category) {
+    conditions.push('fi.category = ?');
+    values.push(query.category);
+  }
+  if (query.status) {
+    conditions.push('fi.status = ?');
+    values.push(query.status);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = query.limit ?? 20;
+  const result = await db.prepare(`
+    SELECT
+      fi.issue_id,
+      fi.canonical_title,
+      fi.normalized_problem,
+      fi.category,
+      fi.severity,
+      fi.impact,
+      fi.count,
+      fi.priority_score,
+      fi.status,
+      fi.first_seen_at,
+      fi.last_seen_at,
+      latest.conversation_id AS representative_conversation_id,
+      latest.app_id AS representative_app_id,
+      latest.app_name AS representative_app_name,
+      latest.workspace_id AS representative_workspace_id,
+      latest.route AS representative_route,
+      latest.screen_name AS representative_screen_name,
+      latest.latest_message_body AS representative_message,
+      latest.latest_message_at AS representative_message_at,
+      link_counts.source_conversation_count
+    FROM feedback_issues fi
+    LEFT JOIN (
+      SELECT issue_id, COUNT(DISTINCT conversation_id) AS source_conversation_count
+      FROM feedback_issue_links
+      GROUP BY issue_id
+    ) link_counts ON link_counts.issue_id = fi.issue_id
+    LEFT JOIN (
+      SELECT
+        fil.issue_id,
+        c.conversation_id,
+        c.app_id,
+        c.app_name,
+        c.workspace_id,
+        c.route,
+        c.screen_name,
+        m.body AS latest_message_body,
+        m.created_at AS latest_message_at
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      LEFT JOIN feedback_messages m ON m.message_id = (
+        SELECT message_id
+        FROM feedback_messages
+        WHERE conversation_id = c.conversation_id
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      WHERE fil.issue_link_id = (
+        SELECT issue_link_id
+        FROM feedback_issue_links
+        WHERE issue_id = fil.issue_id
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+    ) latest ON latest.issue_id = fi.issue_id
+    ${where}
+    ORDER BY fi.priority_score DESC, fi.count DESC, fi.last_seen_at DESC
+    LIMIT ?
+  `).bind(...values, limit).all<Record<string, unknown>>();
+
+  return {
+    items: result.results.map((issue) => ({
+      ...issue,
+      brief: {
+        title: issue.canonical_title,
+        problem: issue.normalized_problem,
+        priority: {
+          score: issue.priority_score,
+          severity: issue.severity,
+          impact: issue.impact,
+          count: issue.count,
+        },
+        urgencyReasons: explainUrgency(issue),
+        recommendedAction: recommendIssueAction(issue),
+        recommendedActionReasons: explainRecommendedAction(issue),
+      },
+    })),
+    filters: {
+      category: query.category ?? null,
+      status: query.status ?? null,
       limit,
     },
     generatedAt: nowIso(),
