@@ -10,6 +10,7 @@ import {
   getAdminFollowUpQueue,
   getAdminInbox,
   getAdminIntakeMetrics,
+  getAdminIssueBriefs,
   getAdminMetadataQuality,
   getAdminOverview,
   getAdminRankings,
@@ -31,7 +32,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminActionBoardQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminActionBoardQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -101,6 +102,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/follow-up-queue',
     'GET /api/admin/inbox',
     'GET /api/admin/intake-metrics',
+    'GET /api/admin/issue-briefs',
     'GET /api/admin/metadata-quality',
     'GET /api/admin/rankings',
     'GET /api/admin/status-activity',
@@ -278,6 +280,15 @@ app.get('/api/admin/intake-metrics', async (c) => {
     since: c.req.query('since'),
   });
   return c.json({ status: 'success', metrics: await getAdminIntakeMetrics(c.env.DB, query) });
+});
+
+app.get('/api/admin/issue-briefs', async (c) => {
+  const query = adminIssueBriefsQuerySchema.parse({
+    category: c.req.query('category'),
+    status: c.req.query('status'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', issueBriefs: await getAdminIssueBriefs(c.env.DB, query) });
 });
 
 app.get('/api/admin/metadata-quality', async (c) => {
