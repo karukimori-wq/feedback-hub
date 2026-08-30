@@ -2,6 +2,7 @@ import { analyzeWithAiPlatformCore, type AiPlatformCoreEnv } from './ai-platform
 import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
 import { newId, nowIso } from './ids';
 import type {
+  AdminActionBoardQuery,
   AdminInboxQuery,
   AdminFollowUpQueueQuery,
   AdminIntakeMetricsQuery,
@@ -970,6 +971,93 @@ export async function getAdminStatusActivity(db: D1Database, query: AdminStatusA
   };
 }
 
+export async function getAdminActionBoard(db: D1Database, query: AdminActionBoardQuery = {}) {
+  const status = query.status ?? 'open';
+  const limit = query.limit ?? 25;
+  const result = await db.prepare(`
+    SELECT
+      fi.issue_id,
+      fi.canonical_title,
+      fi.normalized_problem,
+      fi.category,
+      fi.severity,
+      fi.impact,
+      fi.count,
+      fi.priority_score,
+      fi.priority_components_json,
+      fi.status,
+      fi.first_seen_at,
+      fi.last_seen_at,
+      latest.conversation_id AS latest_conversation_id,
+      latest.app_id AS latest_app_id,
+      latest.app_name AS latest_app_name,
+      latest.workspace_id AS latest_workspace_id,
+      latest.route AS latest_route,
+      latest.screen_name AS latest_screen_name,
+      latest.latest_message_body,
+      latest.latest_message_at,
+      link_counts.source_conversation_count
+    FROM feedback_issues fi
+    LEFT JOIN (
+      SELECT issue_id, COUNT(DISTINCT conversation_id) AS source_conversation_count
+      FROM feedback_issue_links
+      GROUP BY issue_id
+    ) link_counts ON link_counts.issue_id = fi.issue_id
+    LEFT JOIN (
+      SELECT
+        fil.issue_id,
+        c.conversation_id,
+        c.app_id,
+        c.app_name,
+        c.workspace_id,
+        c.route,
+        c.screen_name,
+        m.body AS latest_message_body,
+        m.created_at AS latest_message_at
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      LEFT JOIN feedback_messages m ON m.message_id = (
+        SELECT message_id
+        FROM feedback_messages
+        WHERE conversation_id = c.conversation_id
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      WHERE fil.issue_link_id = (
+        SELECT issue_link_id
+        FROM feedback_issue_links
+        WHERE issue_id = fil.issue_id
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+    ) latest ON latest.issue_id = fi.issue_id
+    WHERE fi.status = ?
+    ORDER BY fi.priority_score DESC, fi.count DESC, fi.last_seen_at DESC
+    LIMIT ?
+  `).bind(status, limit).all<Record<string, unknown>>();
+
+  const items = result.results.map((issue) => ({
+    ...issue,
+    urgencyReasons: explainUrgency(issue),
+    recommendedAction: recommendIssueAction(issue),
+  }));
+
+  return {
+    items,
+    counts: {
+      total: items.length,
+      urgent: items.filter((issue) => (issue.urgencyReasons as string[]).length > 0).length,
+      needsTriage: items.filter((issue) => issue.recommendedAction === 'triage_now').length,
+      readyForAcceptanceReview: items.filter((issue) => issue.recommendedAction === 'review_for_acceptance').length,
+    },
+    filters: {
+      status,
+      limit,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
 export async function getRankedIssues(db: D1Database, category: ListIssuesQuery['category'], query: RankingQuery = {}) {
   return listIssues(db, {
     category,
@@ -988,6 +1076,27 @@ function metadataQualityField(field: string, missingValue: number | null | undef
     present,
     completenessRate: total > 0 ? present / total : 1,
   };
+}
+
+function recommendIssueAction(issue: Record<string, unknown>) {
+  const status = String(issue.status ?? 'open');
+  const severity = String(issue.severity ?? 'Low');
+  const impact = String(issue.impact ?? 'Low');
+  const count = Number(issue.count ?? 0);
+
+  if (status === 'open' && (severity === 'Critical' || impact === 'Critical' || count >= 30)) {
+    return 'triage_now';
+  }
+  if (status === 'open') {
+    return 'review_for_triage';
+  }
+  if (status === 'triaged') {
+    return 'review_for_acceptance';
+  }
+  if (status === 'accepted') {
+    return 'monitor_until_resolved';
+  }
+  return 'monitor';
 }
 
 export async function getRequestRankings(db: D1Database, query: RankingQuery = {}) {
