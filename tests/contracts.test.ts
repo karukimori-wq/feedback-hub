@@ -45,6 +45,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/admin/follow-up-queue');
     expect(body.endpoints).toContain('GET /api/admin/inbox');
     expect(body.endpoints).toContain('GET /api/admin/intake-metrics');
+    expect(body.endpoints).toContain('GET /api/admin/issue-briefs');
     expect(body.endpoints).toContain('GET /api/admin/metadata-quality');
     expect(body.endpoints).toContain('GET /api/admin/rankings');
     expect(body.endpoints).toContain('GET /api/admin/status-activity');
@@ -174,6 +175,15 @@ describe('contract endpoints', () => {
 
   it('validates admin metadata quality date filters before persistence', async () => {
     const response = await app.request('/api/admin/metadata-quality?since=yesterday', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates admin issue brief limits before persistence', async () => {
+    const response = await app.request('/api/admin/issue-briefs?limit=500', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };
