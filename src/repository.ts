@@ -1040,6 +1040,7 @@ export async function getAdminActionBoard(db: D1Database, query: AdminActionBoar
     ...issue,
     urgencyReasons: explainUrgency(issue),
     recommendedAction: recommendIssueAction(issue),
+    recommendedActionReasons: explainRecommendedAction(issue),
   }));
 
   return {
@@ -1097,6 +1098,26 @@ function recommendIssueAction(issue: Record<string, unknown>) {
     return 'monitor_until_resolved';
   }
   return 'monitor';
+}
+
+function explainRecommendedAction(issue: Record<string, unknown>) {
+  const status = String(issue.status ?? 'open');
+  const severity = String(issue.severity ?? 'Low');
+  const impact = String(issue.impact ?? 'Low');
+  const count = Number(issue.count ?? 0);
+  const reasons = [];
+
+  if (status === 'open') reasons.push('status_open');
+  if (status === 'triaged') reasons.push('status_triaged');
+  if (status === 'accepted') reasons.push('status_accepted');
+  if (severity === 'Critical') reasons.push('critical_severity');
+  if (impact === 'Critical') reasons.push('critical_impact');
+  if (severity === 'High') reasons.push('high_severity');
+  if (impact === 'High') reasons.push('high_impact');
+  if (count >= 30) reasons.push('repeated_feedback_threshold');
+  if (count >= 10 && count < 30) reasons.push('repeated_feedback_watch');
+
+  return reasons;
 }
 
 export async function getRequestRankings(db: D1Database, query: RankingQuery = {}) {
