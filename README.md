@@ -110,6 +110,12 @@ npm run db:migrate:remote
 npm run deploy
 ```
 
+GitHub Actions production deployment is available through the `Cloudflare Production` workflow. Required repository secrets:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_D1_DATABASE_ID`
+
 See `docs/cloudflare-deployment.md` for the first-deploy runbook and production smoke tests.
 
 Issue list filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
