@@ -16,6 +16,10 @@ This runbook covers the first Cloudflare deployment for Feedback Hub.
 - Wrangler authentication or `CLOUDFLARE_API_TOKEN`
 - A D1 database for Feedback Hub
 - AI Platform Core deployed and reachable
+- GitHub repository secrets for production deploy:
+  - `CLOUDFLARE_API_TOKEN`
+  - `CLOUDFLARE_ACCOUNT_ID`
+  - `CLOUDFLARE_D1_DATABASE_ID`
 
 ## First Deployment
 
@@ -67,6 +71,24 @@ npm run db:migrate:remote
 ```bash
 npm run deploy
 ```
+
+## GitHub Actions Deployment
+
+Use this path when deploying from the GitHub web UI.
+
+1. Create the D1 database in Cloudflare.
+
+```bash
+npx wrangler d1 create feedback-hub
+```
+
+2. Add the returned database ID to GitHub repository secrets as `CLOUDFLARE_D1_DATABASE_ID`.
+3. Add `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` to GitHub repository secrets.
+4. Open GitHub Actions.
+5. Select `Cloudflare Production`.
+6. Run workflow from `main`.
+
+The workflow runs typecheck, tests, build, injects the D1 database ID into `wrangler.jsonc`, applies the remote D1 migration, and deploys the Worker.
 
 ## Production Smoke Tests
 
