@@ -100,6 +100,7 @@ curl "$WORKER_URL/version"
 curl "$WORKER_URL/contracts/status"
 curl "$WORKER_URL/api/persistence/status"
 curl -X POST "$WORKER_URL/api/persistence/roundtrip"
+curl "$WORKER_URL/api/embed/config?appId=numeria-studio"
 curl "$WORKER_URL/api/feedback/conversations?limit=10"
 curl "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID"
 curl "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID/follow-ups?limit=5"
@@ -136,6 +137,20 @@ curl -X POST "$WORKER_URL/api/feedback/intake" \
     "browser": "smoke",
     "initialMessage": "保存できない。登録してもデータが残らない"
   }'
+curl -X POST "$WORKER_URL/api/embed/feedback" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "appId": "velvet",
+    "appName": "Velvet",
+    "workspaceId": "smoke_workspace",
+    "userId": "smoke_user",
+    "route": "/app/chat",
+    "screenName": "会話画面",
+    "appVersion": "0.1.0",
+    "device": "smoke",
+    "browser": "smoke",
+    "initialMessage": "チャットの返答が途中で止まりました"
+  }'
 ```
 
 Expected results:
@@ -146,6 +161,7 @@ Expected results:
 - `/api/persistence/status` returns `databaseBackedPersistenceReady: true`.
 - `/api/persistence/roundtrip` returns `roundtripReady: true`.
 - `/api/persistence/roundtrip` should return `analysisSource: "ai-platform-core"` when AI Platform Core is reachable.
+- `/api/embed/config?appId=numeria-studio` returns `entryLabel: "質問・改善"`, `uiOwner: "source-app"`, `processingOwner: "feedback-hub"`, and `aiProvider: "ai-platform-core"`.
 - `/api/feedback/conversations?limit=10` returns recent conversations for the admin list.
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID` returns the raw messages, AI analyses, and `issueLinks` to inspect the canonical Issue mapping.
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID/follow-ups?limit=5` returns the latest AI-suggested follow-up questions.
@@ -167,6 +183,7 @@ Expected results:
 - `/api/admin/triage-queue?limit=10` returns open Issues sorted by priority with source conversation counts and latest user-message previews.
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID/status` returns a conversation status transition event.
 - `/api/feedback/intake` returns `intake.status: "accepted"` and either `intake.nextAction: "ask_follow_up"` or `intake.nextAction: "show_received"`.
+- `/api/embed/feedback` returns the same accepted intake shape for source-app-owned question box UIs.
 
 ## Browser Client Requirements
 

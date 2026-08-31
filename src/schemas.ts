@@ -18,6 +18,10 @@ export const createFeedbackIntakeSchema = createConversationSchema.extend({
   initialMessage: z.string().min(1),
 });
 
+export const embedConfigQuerySchema = z.object({
+  appId: z.string().min(1),
+});
+
 export const createMessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
   body: z.string().min(1),
@@ -122,6 +126,7 @@ export const updateIssueStatusSchema = z.object({
 
 export type CreateConversationInput = z.infer<typeof createConversationSchema>;
 export type CreateFeedbackIntakeInput = z.infer<typeof createFeedbackIntakeSchema>;
+export type EmbedConfigQuery = z.infer<typeof embedConfigQuerySchema>;
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 export type ConversationFollowUpsQuery = z.infer<typeof conversationFollowUpsQuerySchema>;
 export type AdminFollowUpQueueQuery = z.infer<typeof adminFollowUpQueueQuerySchema>;

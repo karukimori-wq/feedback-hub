@@ -30,6 +30,8 @@ describe('contract endpoints', () => {
     expect(body.professionalIdRequired).toBe(false);
     expect(body.aiProvider).toBe('ai-platform-core');
     expect(body.localAiUsage).toBe('fallback-only');
+    expect(body.endpoints).toContain('GET /api/embed/config');
+    expect(body.endpoints).toContain('POST /api/embed/feedback');
     expect(body.endpoints).toContain('POST /api/feedback/intake');
     expect(body.endpoints).toContain('GET /api/feedback/conversations');
     expect(body.endpoints).toContain('POST /api/feedback/conversations');
@@ -80,6 +82,75 @@ describe('contract endpoints', () => {
       body: JSON.stringify({
         appId: 'numeria-studio',
         appName: 'Numeria Studio',
+        workspaceId: 'ws_test',
+        userId: 'user_test',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    }, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns source-app owned embed config for known apps', async () => {
+    const response = await app.request('/api/embed/config?appId=numeria-studio', {}, env);
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      status: string;
+      config: {
+        appId: string;
+        appName: string;
+        entryLabel: string;
+        uiOwner: string;
+        processingOwner: string;
+        aiProvider: string;
+        intakeEndpoint: string;
+        requiredFields: string[];
+        autoContextFields: string[];
+        rawVoicePreserved: boolean;
+      };
+    };
+    expect(body.status).toBe('success');
+    expect(body.config.appId).toBe('numeria-studio');
+    expect(body.config.appName).toBe('Numeria Studio');
+    expect(body.config.entryLabel).toBe('質問・改善');
+    expect(body.config.uiOwner).toBe('source-app');
+    expect(body.config.processingOwner).toBe('feedback-hub');
+    expect(body.config.aiProvider).toBe('ai-platform-core');
+    expect(body.config.intakeEndpoint).toBe('/api/embed/feedback');
+    expect(body.config.requiredFields).toContain('initialMessage');
+    expect(body.config.autoContextFields).toContain('route');
+    expect(body.config.rawVoicePreserved).toBe(true);
+  });
+
+  it('returns generic embed config for future apps', async () => {
+    const response = await app.request('/api/embed/config?appId=future-app', {}, env);
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as { config: { appId: string; appName: string; knowledgeScope: string } };
+    expect(body.config.appId).toBe('future-app');
+    expect(body.config.appName).toBe('future-app');
+    expect(body.config.knowledgeScope).toBe('future-app');
+  });
+
+  it('requires appId for embed config before persistence', async () => {
+    const response = await app.request('/api/embed/config', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('requires an initial message for embed feedback intake', async () => {
+    const response = await app.request('/api/embed/feedback', {
+      method: 'POST',
+      body: JSON.stringify({
+        appId: 'velvet',
+        appName: 'Velvet',
         workspaceId: 'ws_test',
         userId: 'user_test',
       }),

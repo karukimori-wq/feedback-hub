@@ -15,6 +15,7 @@ import type {
   CreateConversationInput,
   CreateFeedbackIntakeInput,
   CreateMessageInput,
+  EmbedConfigQuery,
   IssueSourceMessagesQuery,
   ListConversationsQuery,
   ListIssuesQuery,
@@ -22,6 +23,65 @@ import type {
   UpdateConversationStatusInput,
   UpdateIssueStatusInput,
 } from './schemas';
+
+type EmbedAppConfig = {
+  appId: string;
+  appName: string;
+  knowledgeScope: string;
+};
+
+const EMBED_APP_CONFIGS: Record<string, EmbedAppConfig> = {
+  'numeria-studio': {
+    appId: 'numeria-studio',
+    appName: 'Numeria Studio',
+    knowledgeScope: 'numeria-studio',
+  },
+  velvet: {
+    appId: 'velvet',
+    appName: 'Velvet',
+    knowledgeScope: 'velvet',
+  },
+  'sns-planner': {
+    appId: 'sns-planner',
+    appName: 'SNS Planner',
+    knowledgeScope: 'sns-planner',
+  },
+  'communication-planner': {
+    appId: 'communication-planner',
+    appName: 'Communication Planner',
+    knowledgeScope: 'communication-planner',
+  },
+  'growth-engine': {
+    appId: 'growth-engine',
+    appName: 'Growth Engine',
+    knowledgeScope: 'growth-engine',
+  },
+};
+
+export function getEmbedConfig(query: EmbedConfigQuery) {
+  const configuredApp = EMBED_APP_CONFIGS[query.appId] ?? {
+    appId: query.appId,
+    appName: query.appId,
+    knowledgeScope: query.appId,
+  };
+
+  return {
+    ...configuredApp,
+    entryLabel: '質問・改善',
+    uiOwner: 'source-app',
+    processingOwner: 'feedback-hub',
+    aiProvider: 'ai-platform-core',
+    intakeEndpoint: '/api/embed/feedback',
+    compatibleIntakeEndpoint: '/api/feedback/intake',
+    requiredFields: ['appId', 'appName', 'workspaceId', 'userId', 'initialMessage'],
+    autoContextFields: ['route', 'screenName', 'appVersion', 'device', 'browser', 'occurredAt'],
+    conversationModel: ['Conversation', 'Message', 'AI Analysis', 'Issue'],
+    supportedCategories: ['Question', 'Bug', 'Improvement', 'Feature Request', 'UX Feedback', 'Other'],
+    responseModes: ['show_received', 'ask_follow_up'],
+    rawVoicePreserved: true,
+    generatedAt: nowIso(),
+  };
+}
 
 export async function getPersistenceStatus(db: D1Database) {
   const checkedAt = nowIso();

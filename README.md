@@ -36,6 +36,21 @@ Feedback Hub does not own model execution. AI analysis is delegated to AI Platfo
 
 The deterministic classifier is fallback-only for local development, tests, and APC outages.
 
+## Embedded Question Box Contract
+
+Each source app owns its own question box UI. Feedback Hub owns the shared intake API and AI processing.
+
+- Source apps render `質問・改善` and the chat UI in their own product experience.
+- Source apps attach `appId`, `appName`, `workspaceId`, `userId`, route, screen, version, device, browser, and occurrence time.
+- Feedback Hub receives the feedback, stores the original voice, uses AI Platform Core, groups similar feedback into Issues, and ranks priority.
+
+Embedding endpoints:
+
+- `GET /api/embed/config?appId=...`
+- `POST /api/embed/feedback`
+
+See `docs/embedding.md` for the app-side integration contract.
+
 ## Contract Endpoints
 
 - `GET /health`
@@ -43,6 +58,10 @@ The deterministic classifier is fallback-only for local development, tests, and 
 - `GET /contracts/status`
 - `GET /api/persistence/status`
 - `POST /api/persistence/roundtrip`
+- `GET /api/embed/config`
+  - Returns the source-app-owned question box contract for an `appId`.
+- `POST /api/embed/feedback`
+  - Receives feedback from each app's own question box UI and runs the same intake flow as `/api/feedback/intake`.
 - `POST /api/feedback/intake`
 - `GET /api/feedback/conversations`
 - `POST /api/feedback/conversations`
@@ -143,6 +162,8 @@ Admin ranking filters: `status`, `bugLimit`, `requestLimit`, and `questionLimit`
 Admin status activity filters: `issueId`, `nextStatus`, `since`, and `limit`.
 
 Admin triage queue filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
+
+Embed config filters: `appId`.
 
 ## Platform Contract
 
