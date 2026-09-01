@@ -27,6 +27,10 @@ export const createMessageSchema = z.object({
   body: z.string().min(1),
 });
 
+export const createEmbedConversationMessageSchema = z.object({
+  body: z.string().min(1),
+});
+
 export const updateConversationStatusSchema = z.object({
   status: z.enum(['open', 'closed']),
 });
@@ -128,6 +132,7 @@ export type CreateConversationInput = z.infer<typeof createConversationSchema>;
 export type CreateFeedbackIntakeInput = z.infer<typeof createFeedbackIntakeSchema>;
 export type EmbedConfigQuery = z.infer<typeof embedConfigQuerySchema>;
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
+export type CreateEmbedConversationMessageInput = z.infer<typeof createEmbedConversationMessageSchema>;
 export type ConversationFollowUpsQuery = z.infer<typeof conversationFollowUpsQuerySchema>;
 export type AdminFollowUpQueueQuery = z.infer<typeof adminFollowUpQueueQuerySchema>;
 export type AdminActionBoardQuery = z.infer<typeof adminActionBoardQuerySchema>;

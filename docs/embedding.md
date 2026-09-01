@@ -49,6 +49,7 @@ The response tells the source app which label, endpoint, fields, and ownership m
     "processingOwner": "feedback-hub",
     "aiProvider": "ai-platform-core",
     "intakeEndpoint": "/api/embed/feedback",
+    "followUpEndpointTemplate": "/api/embed/conversations/{conversationId}/messages",
     "compatibleIntakeEndpoint": "/api/feedback/intake",
     "requiredFields": ["appId", "appName", "workspaceId", "userId", "initialMessage"],
     "autoContextFields": ["route", "screenName", "appVersion", "device", "browser", "occurredAt"],
@@ -92,7 +93,23 @@ Content-Type: application/json
 3. Source app attaches workspace, user, route, screen, version, device, browser, and time context.
 4. Source app posts to `/api/embed/feedback`.
 5. If Feedback Hub returns `intake.nextAction: "ask_follow_up"`, show the returned `followUpQuestions`.
-6. Otherwise show a received state.
+6. If the user answers a follow-up question, post that answer to `/api/embed/conversations/{conversationId}/messages`.
+7. Otherwise show a received state.
+
+## Send Follow-Up Answers
+
+```http
+POST /api/embed/conversations/{conversationId}/messages
+Content-Type: application/json
+```
+
+```json
+{
+  "body": "鑑定詳細画面で保存ボタンを押した後に発生しました"
+}
+```
+
+The endpoint stores the answer as a user Message, asks AI Platform Core to analyze the updated Conversation, and returns the same accepted intake shape as the first submission.
 
 ## Response Handling
 

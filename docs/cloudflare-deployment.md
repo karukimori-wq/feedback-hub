@@ -151,6 +151,11 @@ curl -X POST "$WORKER_URL/api/embed/feedback" \
     "browser": "smoke",
     "initialMessage": "チャットの返答が途中で止まりました"
   }'
+curl -X POST "$WORKER_URL/api/embed/conversations/YOUR_CONVERSATION_ID/messages" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "body": "会話画面で送信した直後に止まりました"
+  }'
 ```
 
 Expected results:
@@ -184,6 +189,7 @@ Expected results:
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID/status` returns a conversation status transition event.
 - `/api/feedback/intake` returns `intake.status: "accepted"` and either `intake.nextAction: "ask_follow_up"` or `intake.nextAction: "show_received"`.
 - `/api/embed/feedback` returns the same accepted intake shape for source-app-owned question box UIs.
+- `/api/embed/conversations/YOUR_CONVERSATION_ID/messages` stores a follow-up answer from the source app UI and re-runs analysis.
 
 ## Browser Client Requirements
 

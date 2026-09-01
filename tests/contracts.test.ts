@@ -32,6 +32,7 @@ describe('contract endpoints', () => {
     expect(body.localAiUsage).toBe('fallback-only');
     expect(body.endpoints).toContain('GET /api/embed/config');
     expect(body.endpoints).toContain('POST /api/embed/feedback');
+    expect(body.endpoints).toContain('POST /api/embed/conversations/:conversationId/messages');
     expect(body.endpoints).toContain('POST /api/feedback/intake');
     expect(body.endpoints).toContain('GET /api/feedback/conversations');
     expect(body.endpoints).toContain('POST /api/feedback/conversations');
@@ -108,6 +109,7 @@ describe('contract endpoints', () => {
         processingOwner: string;
         aiProvider: string;
         intakeEndpoint: string;
+        followUpEndpointTemplate: string;
         requiredFields: string[];
         autoContextFields: string[];
         rawVoicePreserved: boolean;
@@ -121,6 +123,7 @@ describe('contract endpoints', () => {
     expect(body.config.processingOwner).toBe('feedback-hub');
     expect(body.config.aiProvider).toBe('ai-platform-core');
     expect(body.config.intakeEndpoint).toBe('/api/embed/feedback');
+    expect(body.config.followUpEndpointTemplate).toBe('/api/embed/conversations/{conversationId}/messages');
     expect(body.config.requiredFields).toContain('initialMessage');
     expect(body.config.autoContextFields).toContain('route');
     expect(body.config.rawVoicePreserved).toBe(true);
@@ -154,6 +157,19 @@ describe('contract endpoints', () => {
         workspaceId: 'ws_test',
         userId: 'user_test',
       }),
+      headers: { 'Content-Type': 'application/json' },
+    }, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('requires a body for embed conversation follow-up messages before persistence', async () => {
+    const response = await app.request('/api/embed/conversations/conv_test/messages', {
+      method: 'POST',
+      body: JSON.stringify({}),
       headers: { 'Content-Type': 'application/json' },
     }, env);
 

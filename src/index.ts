@@ -4,6 +4,7 @@ import { APP_NAME, CONTRACT_VERSION } from './domain';
 import {
   analyzeConversation,
   createConversation,
+  createEmbedConversationMessage,
   createFeedbackIntake,
   getEmbedConfig,
   createMessage,
@@ -33,7 +34,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminActionBoardQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminActionBoardQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createEmbedConversationMessageSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -84,6 +85,7 @@ app.get('/contracts/status', (c) => c.json({
     'POST /api/persistence/roundtrip',
     'GET /api/embed/config',
     'POST /api/embed/feedback',
+    'POST /api/embed/conversations/:conversationId/messages',
     'POST /api/feedback/intake',
     'GET /api/feedback/conversations',
     'POST /api/feedback/conversations',
@@ -144,6 +146,12 @@ app.get('/api/embed/config', (c) => {
 app.post('/api/embed/feedback', async (c) => {
   const input = createFeedbackIntakeSchema.parse(await c.req.json());
   const result = await createFeedbackIntake(c.env.DB, c.env, input);
+  return c.json({ status: 'success', ...result }, 201);
+});
+
+app.post('/api/embed/conversations/:conversationId/messages', async (c) => {
+  const input = createEmbedConversationMessageSchema.parse(await c.req.json());
+  const result = await createEmbedConversationMessage(c.env.DB, c.env, c.req.param('conversationId'), input);
   return c.json({ status: 'success', ...result }, 201);
 });
 

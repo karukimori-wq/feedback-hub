@@ -13,6 +13,7 @@ import type {
   AdminTriageQueueQuery,
   ConversationFollowUpsQuery,
   CreateConversationInput,
+  CreateEmbedConversationMessageInput,
   CreateFeedbackIntakeInput,
   CreateMessageInput,
   EmbedConfigQuery,
@@ -72,6 +73,7 @@ export function getEmbedConfig(query: EmbedConfigQuery) {
     processingOwner: 'feedback-hub',
     aiProvider: 'ai-platform-core',
     intakeEndpoint: '/api/embed/feedback',
+    followUpEndpointTemplate: '/api/embed/conversations/{conversationId}/messages',
     compatibleIntakeEndpoint: '/api/feedback/intake',
     requiredFields: ['appId', 'appName', 'workspaceId', 'userId', 'initialMessage'],
     autoContextFields: ['route', 'screenName', 'appVersion', 'device', 'browser', 'occurredAt'],
@@ -177,6 +179,35 @@ export async function createFeedbackIntake(db: D1Database, env: AiPlatformCoreEn
   return {
     conversationId: conversation.conversationId,
     messageId: conversation.initialMessage?.messageId,
+    analysisId: analysis.analysisId,
+    issue: analysis.issue,
+    analysis: analysis.analysis,
+    analysisSource: analysis.analysisSource,
+    fallbackUsed: analysis.fallbackUsed,
+    intake: {
+      status: 'accepted',
+      nextAction,
+      followUpQuestions: analysis.analysis.suggestedQuestions,
+      urgency: analysis.analysis.severity === 'Critical' || analysis.analysis.impact === 'Critical'
+        ? 'urgent_candidate'
+        : 'normal',
+    },
+  };
+}
+
+export async function createEmbedConversationMessage(
+  db: D1Database,
+  env: AiPlatformCoreEnv,
+  conversationId: string,
+  input: CreateEmbedConversationMessageInput,
+) {
+  const message = await createMessage(db, conversationId, { role: 'user', body: input.body });
+  const analysis = await analyzeConversation(db, conversationId, env);
+  const nextAction = decideIntakeNextAction(analysis.analysis.suggestedQuestions);
+
+  return {
+    conversationId,
+    messageId: message.messageId,
     analysisId: analysis.analysisId,
     issue: analysis.issue,
     analysis: analysis.analysis,
