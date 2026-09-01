@@ -32,6 +32,7 @@ describe('contract endpoints', () => {
     expect(body.localAiUsage).toBe('fallback-only');
     expect(body.endpoints).toContain('GET /api/embed/config');
     expect(body.endpoints).toContain('POST /api/embed/feedback');
+    expect(body.endpoints).toContain('GET /api/embed/conversations/:conversationId');
     expect(body.endpoints).toContain('POST /api/embed/conversations/:conversationId/messages');
     expect(body.endpoints).toContain('POST /api/feedback/intake');
     expect(body.endpoints).toContain('GET /api/feedback/conversations');
@@ -110,6 +111,7 @@ describe('contract endpoints', () => {
         aiProvider: string;
         intakeEndpoint: string;
         followUpEndpointTemplate: string;
+        conversationEndpointTemplate: string;
         requiredFields: string[];
         autoContextFields: string[];
         rawVoicePreserved: boolean;
@@ -124,6 +126,7 @@ describe('contract endpoints', () => {
     expect(body.config.aiProvider).toBe('ai-platform-core');
     expect(body.config.intakeEndpoint).toBe('/api/embed/feedback');
     expect(body.config.followUpEndpointTemplate).toBe('/api/embed/conversations/{conversationId}/messages');
+    expect(body.config.conversationEndpointTemplate).toBe('/api/embed/conversations/{conversationId}');
     expect(body.config.requiredFields).toContain('initialMessage');
     expect(body.config.autoContextFields).toContain('route');
     expect(body.config.rawVoicePreserved).toBe(true);

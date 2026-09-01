@@ -101,6 +101,7 @@ curl "$WORKER_URL/contracts/status"
 curl "$WORKER_URL/api/persistence/status"
 curl -X POST "$WORKER_URL/api/persistence/roundtrip"
 curl "$WORKER_URL/api/embed/config?appId=numeria-studio"
+curl "$WORKER_URL/api/embed/conversations/YOUR_CONVERSATION_ID"
 curl "$WORKER_URL/api/feedback/conversations?limit=10"
 curl "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID"
 curl "$WORKER_URL/api/feedback/conversations/YOUR_CONVERSATION_ID/follow-ups?limit=5"
@@ -167,6 +168,7 @@ Expected results:
 - `/api/persistence/roundtrip` returns `roundtripReady: true`.
 - `/api/persistence/roundtrip` should return `analysisSource: "ai-platform-core"` when AI Platform Core is reachable.
 - `/api/embed/config?appId=numeria-studio` returns `entryLabel: "質問・改善"`, `uiOwner: "source-app"`, `processingOwner: "feedback-hub"`, and `aiProvider: "ai-platform-core"`.
+- `/api/embed/conversations/YOUR_CONVERSATION_ID` returns an app-friendly conversation view with messages, latest analysis, linked Issue, and next action.
 - `/api/feedback/conversations?limit=10` returns recent conversations for the admin list.
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID` returns the raw messages, AI analyses, and `issueLinks` to inspect the canonical Issue mapping.
 - `/api/feedback/conversations/YOUR_CONVERSATION_ID/follow-ups?limit=5` returns the latest AI-suggested follow-up questions.

@@ -74,6 +74,7 @@ export function getEmbedConfig(query: EmbedConfigQuery) {
     aiProvider: 'ai-platform-core',
     intakeEndpoint: '/api/embed/feedback',
     followUpEndpointTemplate: '/api/embed/conversations/{conversationId}/messages',
+    conversationEndpointTemplate: '/api/embed/conversations/{conversationId}',
     compatibleIntakeEndpoint: '/api/feedback/intake',
     requiredFields: ['appId', 'appName', 'workspaceId', 'userId', 'initialMessage'],
     autoContextFields: ['route', 'screenName', 'appVersion', 'device', 'browser', 'occurredAt'],
@@ -221,6 +222,52 @@ export async function createEmbedConversationMessage(
         ? 'urgent_candidate'
         : 'normal',
     },
+  };
+}
+
+export async function getEmbedConversation(db: D1Database, conversationId: string) {
+  const detail = await getConversation(db, conversationId);
+  if (!detail) return null;
+
+  const latestAnalysis = detail.analyses[0] as Record<string, unknown> | undefined;
+  const latestIssueLink = detail.issueLinks[0] as Record<string, unknown> | undefined;
+  const suggestedQuestions = parseJsonStringArray(latestAnalysis?.suggested_questions_json);
+
+  return {
+    conversation: detail.conversation,
+    messages: detail.messages,
+    latestAnalysis: latestAnalysis
+      ? {
+        analysisId: latestAnalysis.analysis_id,
+        category: latestAnalysis.category,
+        severity: latestAnalysis.severity,
+        impact: latestAnalysis.impact,
+        confidence: latestAnalysis.confidence,
+        summary: latestAnalysis.summary,
+        normalizedProblem: latestAnalysis.normalized_problem,
+        suggestedQuestions,
+        createdAt: latestAnalysis.created_at,
+      }
+      : null,
+    issue: latestIssueLink
+      ? {
+        issueId: latestIssueLink.issue_id,
+        title: latestIssueLink.canonical_title,
+        category: latestIssueLink.category,
+        severity: latestIssueLink.severity,
+        impact: latestIssueLink.impact,
+        count: latestIssueLink.count,
+        priorityScore: latestIssueLink.priority_score,
+        status: latestIssueLink.status,
+        similarityScore: latestIssueLink.similarity_score,
+        matchReason: latestIssueLink.match_reason,
+      }
+      : null,
+    intake: {
+      nextAction: decideIntakeNextAction(suggestedQuestions),
+      followUpQuestions: suggestedQuestions,
+    },
+    generatedAt: nowIso(),
   };
 }
 

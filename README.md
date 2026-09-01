@@ -48,6 +48,7 @@ Embedding endpoints:
 
 - `GET /api/embed/config?appId=...`
 - `POST /api/embed/feedback`
+- `GET /api/embed/conversations/:conversationId`
 - `POST /api/embed/conversations/:conversationId/messages`
 
 See `docs/embedding.md` for the app-side integration contract.
@@ -63,6 +64,8 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns the source-app-owned question box contract for an `appId`.
 - `POST /api/embed/feedback`
   - Receives feedback from each app's own question box UI and runs the same intake flow as `/api/feedback/intake`.
+- `GET /api/embed/conversations/:conversationId`
+  - Returns an app-friendly conversation view with messages, latest AI analysis, canonical Issue, and next UI action.
 - `POST /api/embed/conversations/:conversationId/messages`
   - Receives follow-up answers from each app's question box UI, stores them as user messages, and re-runs AI analysis.
 - `POST /api/feedback/intake`

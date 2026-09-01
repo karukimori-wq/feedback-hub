@@ -6,6 +6,7 @@ import {
   createConversation,
   createEmbedConversationMessage,
   createFeedbackIntake,
+  getEmbedConversation,
   getEmbedConfig,
   createMessage,
   getAdminActionBoard,
@@ -85,6 +86,7 @@ app.get('/contracts/status', (c) => c.json({
     'POST /api/persistence/roundtrip',
     'GET /api/embed/config',
     'POST /api/embed/feedback',
+    'GET /api/embed/conversations/:conversationId',
     'POST /api/embed/conversations/:conversationId/messages',
     'POST /api/feedback/intake',
     'GET /api/feedback/conversations',
@@ -147,6 +149,12 @@ app.post('/api/embed/feedback', async (c) => {
   const input = createFeedbackIntakeSchema.parse(await c.req.json());
   const result = await createFeedbackIntake(c.env.DB, c.env, input);
   return c.json({ status: 'success', ...result }, 201);
+});
+
+app.get('/api/embed/conversations/:conversationId', async (c) => {
+  const result = await getEmbedConversation(c.env.DB, c.req.param('conversationId'));
+  if (!result) return c.json({ status: 'error', errorCode: 'CONVERSATION_NOT_FOUND' }, 404);
+  return c.json({ status: 'success', ...result });
 });
 
 app.post('/api/embed/conversations/:conversationId/messages', async (c) => {

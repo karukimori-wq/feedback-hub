@@ -50,6 +50,7 @@ The response tells the source app which label, endpoint, fields, and ownership m
     "aiProvider": "ai-platform-core",
     "intakeEndpoint": "/api/embed/feedback",
     "followUpEndpointTemplate": "/api/embed/conversations/{conversationId}/messages",
+    "conversationEndpointTemplate": "/api/embed/conversations/{conversationId}",
     "compatibleIntakeEndpoint": "/api/feedback/intake",
     "requiredFields": ["appId", "appName", "workspaceId", "userId", "initialMessage"],
     "autoContextFields": ["route", "screenName", "appVersion", "device", "browser", "occurredAt"],
@@ -94,7 +95,8 @@ Content-Type: application/json
 4. Source app posts to `/api/embed/feedback`.
 5. If Feedback Hub returns `intake.nextAction: "ask_follow_up"`, show the returned `followUpQuestions`.
 6. If the user answers a follow-up question, post that answer to `/api/embed/conversations/{conversationId}/messages`.
-7. Otherwise show a received state.
+7. Source app can reload the latest state from `/api/embed/conversations/{conversationId}`.
+8. Otherwise show a received state.
 
 ## Send Follow-Up Answers
 
@@ -110,6 +112,23 @@ Content-Type: application/json
 ```
 
 The endpoint stores the answer as a user Message, asks AI Platform Core to analyze the updated Conversation, and returns the same accepted intake shape as the first submission.
+
+## Get Conversation State
+
+```http
+GET /api/embed/conversations/{conversationId}
+```
+
+The endpoint returns an app-friendly view for the source app's question box UI.
+
+Important response fields:
+
+- `conversation`: Current Conversation metadata and status.
+- `messages`: Stored source-app user messages and assistant/system messages if any are added later.
+- `latestAnalysis`: Latest AI understanding result.
+- `issue`: Canonical Issue linked to this feedback.
+- `intake.nextAction`: `show_received` or `ask_follow_up`.
+- `intake.followUpQuestions`: Questions the source app can show to the user.
 
 ## Response Handling
 
