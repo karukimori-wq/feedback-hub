@@ -41,8 +41,11 @@ The deterministic classifier is fallback-only for local development, tests, and 
 Each source app owns its own question box UI. Feedback Hub owns the shared intake API and AI processing.
 
 - Source apps render `質問・改善` and the chat UI in their own product experience.
-- Source apps attach `appId`, `appName`, `workspaceId`, `userId`, route, screen, version, device, browser, and occurrence time.
+- Source apps attach `sourceApp`, `appVersion`, `planId`, `workspaceId`, `userId`, `currentScreen`, submitted category, occurrence time, and `correlationId`.
+- Numeria Studio and Velvet are release-ready `sourceApp` values for Free and Pro users.
+- Bug reports are accepted regardless of plan. Free limit questions and Pro contract, upgrade, or entitlement reflection issues are classified for admin review.
 - Feedback Hub receives the feedback, stores the original voice, uses AI Platform Core, groups similar feedback into Issues, and ranks priority.
+- Feedback Hub redacts payment card numbers, secret-like tokens, and email addresses before message body persistence.
 
 Embedding endpoints:
 
@@ -153,9 +156,9 @@ Conversation follow-up filters: `limit`.
 
 Admin follow-up queue filters: `workspaceId`, `appId`, and `limit`.
 
-Admin inbox filters: `workspaceId`, `appId`, `status`, `category`, `severity`, `impact`, and `limit`.
+Admin inbox filters: `workspaceId`, `appId`, `sourceApp`, `planId`, `status`, `category`, `severity`, `impact`, and `limit`.
 
-Admin intake metrics filters: `workspaceId`, `appId`, and `since`.
+Admin intake metrics filters: `workspaceId`, `appId`, `sourceApp`, `planId`, and `since`.
 
 Admin issue brief filters: `category`, `status`, and `limit`.
 

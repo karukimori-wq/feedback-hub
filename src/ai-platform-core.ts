@@ -20,6 +20,11 @@ export async function analyzeWithAiPlatformCore(
     workspaceId?: string;
     userId?: string;
     appId?: string;
+    sourceApp?: string;
+    planId?: string;
+    currentScreen?: string;
+    submittedCategory?: string;
+    correlationId?: string;
   },
 ): Promise<FeedbackAnalysisResult> {
   const response = await callAiPlatformCore(env, input);
@@ -46,6 +51,11 @@ async function callAiPlatformCore(
     workspaceId?: string;
     userId?: string;
     appId?: string;
+    sourceApp?: string;
+    planId?: string;
+    currentScreen?: string;
+    submittedCategory?: string;
+    correlationId?: string;
   },
 ) {
   const body = JSON.stringify({

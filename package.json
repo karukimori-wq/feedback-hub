@@ -10,7 +10,9 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:migrate:local": "wrangler d1 execute feedback-hub --local --file ./migrations/0001_initial.sql",
-    "db:migrate:remote": "wrangler d1 execute feedback-hub --remote --file ./migrations/0001_initial.sql"
+    "db:migrate:local:release-intake-context": "wrangler d1 execute feedback-hub --local --file ./migrations/0002_release_intake_context.sql",
+    "db:migrate:remote": "wrangler d1 execute feedback-hub --remote --file ./migrations/0001_initial.sql",
+    "db:migrate:remote:release-intake-context": "wrangler d1 execute feedback-hub --remote --file ./migrations/0002_release_intake_context.sql"
   },
   "dependencies": {
     "hono": "^4.6.20",

@@ -43,7 +43,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use('*', async (c, next) => {
   c.header('Access-Control-Allow-Origin', '*');
   c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  c.header('Access-Control-Allow-Headers', 'Content-Type, X-Client-Id, X-Workspace-Id, X-User-Id, X-Request-Id, X-Correlation-Id');
+  c.header('Access-Control-Allow-Headers', 'Content-Type, X-Client-Id, X-Workspace-Id, X-User-Id, X-Request-Id, X-Correlation-Id, X-Source-App, X-Plan-Id');
   if (c.req.method === 'OPTIONS') return c.body(null, 204);
   await next();
 });
@@ -77,6 +77,11 @@ app.get('/contracts/status', (c) => c.json({
   contractVersion: CONTRACT_VERSION,
   aiProvider: 'ai-platform-core',
   localAiUsage: 'fallback-only',
+  supportedSourceApps: ['numeria-studio', 'velvet', 'sns-planner', 'communication-planner', 'growth-engine'],
+  releaseReadySourceApps: ['numeria-studio', 'velvet'],
+  acceptedPlanIds: ['free', 'pro', 'business'],
+  bugReportsRateLimitedByPlan: false,
+  sensitiveBodyRedaction: true,
   owns: ['Feedback Conversation', 'Feedback Message', 'Feedback AI Analysis', 'Feedback Issue', 'Feedback Ranking'],
   doesNotOwn: ['Customer master', 'Lead lifecycle', 'Reservation', 'Payment', 'Sales / revenue', 'Engineering task management'],
   endpoints: [
@@ -175,6 +180,8 @@ app.get('/api/feedback/conversations', async (c) => {
   const query = listConversationsQuerySchema.parse({
     workspaceId: c.req.query('workspaceId'),
     appId: c.req.query('appId'),
+    sourceApp: c.req.query('sourceApp'),
+    planId: c.req.query('planId'),
     status: c.req.query('status'),
     limit: c.req.query('limit'),
   });
@@ -306,6 +313,8 @@ app.get('/api/admin/inbox', async (c) => {
   const query = adminInboxQuerySchema.parse({
     workspaceId: c.req.query('workspaceId'),
     appId: c.req.query('appId'),
+    sourceApp: c.req.query('sourceApp'),
+    planId: c.req.query('planId'),
     status: c.req.query('status'),
     category: c.req.query('category'),
     severity: c.req.query('severity'),
@@ -319,6 +328,8 @@ app.get('/api/admin/intake-metrics', async (c) => {
   const query = adminIntakeMetricsQuerySchema.parse({
     workspaceId: c.req.query('workspaceId'),
     appId: c.req.query('appId'),
+    sourceApp: c.req.query('sourceApp'),
+    planId: c.req.query('planId'),
     since: c.req.query('since'),
   });
   return c.json({ status: 'success', metrics: await getAdminIntakeMetrics(c.env.DB, query) });

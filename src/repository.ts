@@ -77,8 +77,10 @@ export function getEmbedConfig(query: EmbedConfigQuery) {
     followUpEndpointTemplate: '/api/embed/conversations/{conversationId}/messages',
     conversationEndpointTemplate: '/api/embed/conversations/{conversationId}',
     compatibleIntakeEndpoint: '/api/feedback/intake',
-    requiredFields: ['appId', 'appName', 'workspaceId', 'userId', 'initialMessage'],
-    autoContextFields: ['route', 'screenName', 'appVersion', 'device', 'browser', 'occurredAt'],
+    requiredFields: ['sourceApp', 'appVersion', 'planId', 'workspaceId', 'userId', 'currentScreen', 'category', 'occurredAt', 'correlationId', 'initialMessage'],
+    acceptedPlanIds: ['free', 'pro', 'business'],
+    bugReportsRateLimitedByPlan: false,
+    autoContextFields: ['route', 'screenName', 'currentScreen', 'appVersion', 'planId', 'device', 'browser', 'occurredAt', 'correlationId'],
     conversationModel: ['Conversation', 'Message', 'AI Analysis', 'Issue'],
     supportedCategories: ['Question', 'Bug', 'Improvement', 'Feature Request', 'UX Feedback', 'Other'],
     responseModes: ['show_received', 'ask_follow_up'],
@@ -112,15 +114,20 @@ export async function getPersistenceStatus(db: D1Database) {
 export async function runPersistenceRoundtrip(db: D1Database, env: AiPlatformCoreEnv = {}) {
   const input = {
     appId: 'feedback-hub',
+    sourceApp: 'feedback-hub',
     appName: 'Feedback Hub',
+    planId: 'pro' as const,
     workspaceId: 'roundtrip_workspace',
     userId: 'roundtrip_user',
     route: '/roundtrip',
     screenName: 'Persistence Roundtrip',
+    currentScreen: 'Persistence Roundtrip',
+    category: 'Bug' as const,
     appVersion: '0.1.0',
     device: 'system',
     browser: 'system',
     occurredAt: nowIso(),
+    correlationId: newId('corr'),
     initialMessage: '保存できない。登録してもデータが残らない',
   };
 
@@ -142,23 +149,31 @@ export async function createConversation(db: D1Database, input: CreateConversati
   const now = nowIso();
   const conversationId = newId('conv');
   const occurredAt = input.occurredAt ?? now;
+  const sourceApp = input.sourceApp ?? input.appId;
+  const currentScreen = input.currentScreen ?? input.screenName ?? input.route ?? null;
 
   await db.prepare(`INSERT INTO feedback_conversations (
-    conversation_id, app_id, app_name, workspace_id, user_id, route, screen_name,
-    app_version, device, browser, occurred_at, status, created_at, updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    conversation_id, app_id, source_app, app_name, plan_id, workspace_id, user_id, route, screen_name,
+    current_screen, submitted_category, app_version, device, browser, occurred_at, correlation_id,
+    status, created_at, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(
       conversationId,
       input.appId,
+      sourceApp,
       input.appName,
+      input.planId ?? null,
       input.workspaceId,
       input.userId,
       input.route ?? null,
       input.screenName ?? null,
+      currentScreen,
+      input.category ?? null,
       input.appVersion ?? null,
       input.device ?? null,
       input.browser ?? null,
       occurredAt,
+      input.correlationId ?? null,
       'open',
       now,
       now,
@@ -276,12 +291,13 @@ export async function createMessage(db: D1Database, conversationId: string, inpu
   await assertConversationExists(db, conversationId);
   const messageId = newId('msg');
   const createdAt = nowIso();
+  const body = redactSensitiveText(input.body);
 
   await db.prepare(`INSERT INTO feedback_messages (message_id, conversation_id, role, body, created_at) VALUES (?, ?, ?, ?, ?)`).bind(
     messageId,
     conversationId,
     input.role,
-    input.body,
+    body,
     createdAt,
   ).run();
 
@@ -292,10 +308,19 @@ export async function createMessage(db: D1Database, conversationId: string, inpu
 
 export async function analyzeConversation(db: D1Database, conversationId: string, env: AiPlatformCoreEnv = {}) {
   await assertConversationExists(db, conversationId);
-  const conversation = await db.prepare(`SELECT app_id, workspace_id, user_id FROM feedback_conversations WHERE conversation_id = ?`).bind(conversationId).first<{
+  const conversation = await db.prepare(`
+    SELECT app_id, source_app, workspace_id, user_id, plan_id, current_screen, submitted_category, correlation_id
+    FROM feedback_conversations
+    WHERE conversation_id = ?
+  `).bind(conversationId).first<{
     app_id: string;
+    source_app: string;
     workspace_id: string;
     user_id: string;
+    plan_id: string | null;
+    current_screen: string | null;
+    submitted_category: string | null;
+    correlation_id: string | null;
   }>();
   const messages = await db.prepare(`SELECT body FROM feedback_messages WHERE conversation_id = ? ORDER BY created_at ASC`).bind(conversationId).all<{ body: string }>();
   const text = messages.results.map((message) => message.body).join('\n');
@@ -303,8 +328,13 @@ export async function analyzeConversation(db: D1Database, conversationId: string
     text: text || 'No message provided',
     conversationId,
     appId: conversation?.app_id,
+    sourceApp: conversation?.source_app,
     workspaceId: conversation?.workspace_id,
     userId: conversation?.user_id,
+    planId: conversation?.plan_id ?? undefined,
+    currentScreen: conversation?.current_screen ?? undefined,
+    submittedCategory: conversation?.submitted_category ?? undefined,
+    correlationId: conversation?.correlation_id ?? undefined,
   });
   const analysisId = await saveAnalysis(db, conversationId, analysisResult.analysis, {
     analysisSource: analysisResult.source,
@@ -360,6 +390,14 @@ export async function listConversations(db: D1Database, query: ListConversations
   if (query.appId) {
     conditions.push('app_id = ?');
     values.push(query.appId);
+  }
+  if (query.sourceApp) {
+    conditions.push('source_app = ?');
+    values.push(query.sourceApp);
+  }
+  if (query.planId) {
+    conditions.push('plan_id = ?');
+    values.push(query.planId);
   }
   if (query.status) {
     conditions.push('status = ?');
@@ -617,6 +655,14 @@ export async function getAdminInbox(db: D1Database, query: AdminInboxQuery = {})
     conditions.push('c.app_id = ?');
     values.push(query.appId);
   }
+  if (query.sourceApp) {
+    conditions.push('c.source_app = ?');
+    values.push(query.sourceApp);
+  }
+  if (query.planId) {
+    conditions.push('c.plan_id = ?');
+    values.push(query.planId);
+  }
   if (query.status) {
     conditions.push('c.status = ?');
     values.push(query.status);
@@ -640,15 +686,20 @@ export async function getAdminInbox(db: D1Database, query: AdminInboxQuery = {})
     SELECT
       c.conversation_id,
       c.app_id,
+      c.source_app,
       c.app_name,
+      c.plan_id,
       c.workspace_id,
       c.user_id,
       c.route,
       c.screen_name,
+      c.current_screen,
+      c.submitted_category,
       c.app_version,
       c.device,
       c.browser,
       c.occurred_at,
+      c.correlation_id,
       c.status AS conversation_status,
       c.created_at,
       c.updated_at,
@@ -702,6 +753,8 @@ export async function getAdminInbox(db: D1Database, query: AdminInboxQuery = {})
     filters: {
       workspaceId: query.workspaceId ?? null,
       appId: query.appId ?? null,
+      sourceApp: query.sourceApp ?? null,
+      planId: query.planId ?? null,
       status: query.status ?? null,
       category: query.category ?? null,
       severity: query.severity ?? null,
@@ -916,6 +969,28 @@ export async function getAdminIntakeMetrics(db: D1Database, query: AdminIntakeMe
     )`);
     issueValues.push(query.appId);
   }
+  if (query.sourceApp) {
+    conversationConditions.push('source_app = ?');
+    conversationValues.push(query.sourceApp);
+    issueConditions.push(`issue_id IN (
+      SELECT fil.issue_id
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      WHERE c.source_app = ?
+    )`);
+    issueValues.push(query.sourceApp);
+  }
+  if (query.planId) {
+    conversationConditions.push('plan_id = ?');
+    conversationValues.push(query.planId);
+    issueConditions.push(`issue_id IN (
+      SELECT fil.issue_id
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      WHERE c.plan_id = ?
+    )`);
+    issueValues.push(query.planId);
+  }
   if (query.since) {
     conversationConditions.push('created_at >= ?');
     conversationValues.push(query.since);
@@ -932,7 +1007,7 @@ export async function getAdminIntakeMetrics(db: D1Database, query: AdminIntakeMe
     urgentValues.push(...issueValues);
   }
 
-  const [conversations, messages, analyses, issues, urgent, byApp, byCategory] = await Promise.all([
+  const [conversations, messages, analyses, issues, urgent, byApp, byPlan, byAppAndPlan, byCategory] = await Promise.all([
     db.prepare(`SELECT COUNT(*) AS count FROM feedback_conversations ${conversationWhere}`).bind(...conversationValues).first<{ count: number }>(),
     db.prepare(`
       SELECT COUNT(*) AS count
@@ -947,10 +1022,24 @@ export async function getAdminIntakeMetrics(db: D1Database, query: AdminIntakeMe
     db.prepare(`SELECT COUNT(*) AS count FROM feedback_issues ${issueWhere}`).bind(...issueValues).first<{ count: number }>(),
     db.prepare(`SELECT COUNT(*) AS count FROM feedback_issues WHERE ${urgentWhere.join(' AND ')}`).bind(...urgentValues).first<{ count: number }>(),
     db.prepare(`
-      SELECT app_id, app_name, COUNT(*) AS conversationCount
+      SELECT app_id, source_app, app_name, COUNT(*) AS conversationCount
       FROM feedback_conversations
       ${conversationWhere}
-      GROUP BY app_id, app_name
+      GROUP BY app_id, source_app, app_name
+      ORDER BY conversationCount DESC
+    `).bind(...conversationValues).all(),
+    db.prepare(`
+      SELECT COALESCE(plan_id, 'unknown') AS planId, COUNT(*) AS conversationCount
+      FROM feedback_conversations
+      ${conversationWhere}
+      GROUP BY COALESCE(plan_id, 'unknown')
+      ORDER BY conversationCount DESC
+    `).bind(...conversationValues).all(),
+    db.prepare(`
+      SELECT app_id, source_app, app_name, COALESCE(plan_id, 'unknown') AS planId, COUNT(*) AS conversationCount
+      FROM feedback_conversations
+      ${conversationWhere}
+      GROUP BY app_id, source_app, app_name, COALESCE(plan_id, 'unknown')
       ORDER BY conversationCount DESC
     `).bind(...conversationValues).all(),
     db.prepare(`
@@ -971,10 +1060,14 @@ export async function getAdminIntakeMetrics(db: D1Database, query: AdminIntakeMe
       urgentIssues: Number(urgent?.count ?? 0),
     },
     byApp: byApp.results,
+    byPlan: byPlan.results,
+    byAppAndPlan: byAppAndPlan.results,
     byCategory: byCategory.results,
     filters: {
       workspaceId: query.workspaceId ?? null,
       appId: query.appId ?? null,
+      sourceApp: query.sourceApp ?? null,
+      planId: query.planId ?? null,
       since: query.since ?? null,
     },
     generatedAt: nowIso(),
@@ -995,7 +1088,9 @@ export async function getAdminAppSummary(db: D1Database, query: AdminAppSummaryQ
   const result = await db.prepare(`
     SELECT
       c.app_id,
+      c.source_app,
       c.app_name,
+      COALESCE(c.plan_id, 'unknown') AS plan_id,
       COUNT(DISTINCT c.conversation_id) AS conversation_count,
       SUM(CASE WHEN c.status = 'open' THEN 1 ELSE 0 END) AS open_conversation_count,
       SUM(CASE WHEN c.status = 'closed' THEN 1 ELSE 0 END) AS closed_conversation_count,
@@ -1011,7 +1106,7 @@ export async function getAdminAppSummary(db: D1Database, query: AdminAppSummaryQ
     LEFT JOIN feedback_issue_links fil ON fil.conversation_id = c.conversation_id
     LEFT JOIN feedback_issues fi ON fi.issue_id = fil.issue_id
     ${where}
-    GROUP BY c.app_id, c.app_name
+    GROUP BY c.app_id, c.source_app, c.app_name, COALESCE(c.plan_id, 'unknown')
     ORDER BY urgent_issue_count DESC, conversation_count DESC, last_conversation_at DESC
     LIMIT ?
   `).bind(...values, limit).all<Record<string, unknown>>();
@@ -1019,7 +1114,7 @@ export async function getAdminAppSummary(db: D1Database, query: AdminAppSummaryQ
   return {
     items: result.results.map((item) => ({
       ...item,
-      embedConfig: getEmbedConfig({ appId: String(item.app_id) }),
+      embedConfig: getEmbedConfig({ appId: String(item.source_app || item.app_id) }),
     })),
     filters: {
       since: query.since ?? null,
@@ -1051,43 +1146,58 @@ export async function getAdminMetadataQuality(db: D1Database, query: AdminMetada
     SELECT
       COUNT(*) AS totalConversations,
       SUM(CASE WHEN app_id IS NULL OR app_id = '' THEN 1 ELSE 0 END) AS missingAppId,
+      SUM(CASE WHEN source_app IS NULL OR source_app = '' THEN 1 ELSE 0 END) AS missingSourceApp,
       SUM(CASE WHEN app_name IS NULL OR app_name = '' THEN 1 ELSE 0 END) AS missingAppName,
+      SUM(CASE WHEN plan_id IS NULL OR plan_id = '' THEN 1 ELSE 0 END) AS missingPlanId,
       SUM(CASE WHEN workspace_id IS NULL OR workspace_id = '' THEN 1 ELSE 0 END) AS missingWorkspaceId,
       SUM(CASE WHEN user_id IS NULL OR user_id = '' THEN 1 ELSE 0 END) AS missingUserId,
       SUM(CASE WHEN app_version IS NULL OR app_version = '' THEN 1 ELSE 0 END) AS missingAppVersion,
       SUM(CASE WHEN route IS NULL OR route = '' THEN 1 ELSE 0 END) AS missingRoute,
       SUM(CASE WHEN screen_name IS NULL OR screen_name = '' THEN 1 ELSE 0 END) AS missingScreenName,
+      SUM(CASE WHEN current_screen IS NULL OR current_screen = '' THEN 1 ELSE 0 END) AS missingCurrentScreen,
+      SUM(CASE WHEN submitted_category IS NULL OR submitted_category = '' THEN 1 ELSE 0 END) AS missingSubmittedCategory,
       SUM(CASE WHEN device IS NULL OR device = '' THEN 1 ELSE 0 END) AS missingDevice,
       SUM(CASE WHEN browser IS NULL OR browser = '' THEN 1 ELSE 0 END) AS missingBrowser,
-      SUM(CASE WHEN occurred_at IS NULL OR occurred_at = '' THEN 1 ELSE 0 END) AS missingOccurredAt
+      SUM(CASE WHEN occurred_at IS NULL OR occurred_at = '' THEN 1 ELSE 0 END) AS missingOccurredAt,
+      SUM(CASE WHEN correlation_id IS NULL OR correlation_id = '' THEN 1 ELSE 0 END) AS missingCorrelationId
     FROM feedback_conversations
     ${where}
   `).bind(...values).first<{
     totalConversations: number;
     missingAppId: number | null;
+    missingSourceApp: number | null;
     missingAppName: number | null;
+    missingPlanId: number | null;
     missingWorkspaceId: number | null;
     missingUserId: number | null;
     missingAppVersion: number | null;
     missingRoute: number | null;
     missingScreenName: number | null;
+    missingCurrentScreen: number | null;
+    missingSubmittedCategory: number | null;
     missingDevice: number | null;
     missingBrowser: number | null;
     missingOccurredAt: number | null;
+    missingCorrelationId: number | null;
   }>();
 
   const totalConversations = Number(row?.totalConversations ?? 0);
   const fields = [
     metadataQualityField('appId', row?.missingAppId, totalConversations),
+    metadataQualityField('sourceApp', row?.missingSourceApp, totalConversations),
     metadataQualityField('appName', row?.missingAppName, totalConversations),
+    metadataQualityField('planId', row?.missingPlanId, totalConversations),
     metadataQualityField('workspaceId', row?.missingWorkspaceId, totalConversations),
     metadataQualityField('userId', row?.missingUserId, totalConversations),
     metadataQualityField('appVersion', row?.missingAppVersion, totalConversations),
     metadataQualityField('route', row?.missingRoute, totalConversations),
     metadataQualityField('screenName', row?.missingScreenName, totalConversations),
+    metadataQualityField('currentScreen', row?.missingCurrentScreen, totalConversations),
+    metadataQualityField('submittedCategory', row?.missingSubmittedCategory, totalConversations),
     metadataQualityField('device', row?.missingDevice, totalConversations),
     metadataQualityField('browser', row?.missingBrowser, totalConversations),
     metadataQualityField('occurredAt', row?.missingOccurredAt, totalConversations),
+    metadataQualityField('correlationId', row?.missingCorrelationId, totalConversations),
   ];
   const presentValues = fields.reduce((sum, field) => sum + field.present, 0);
   const possibleValues = fields.length * totalConversations;
@@ -1647,6 +1757,16 @@ export function summarizeUrgentNotifications(notifications: Array<Record<string,
     topPriorityScore,
     generatedAt: nowIso(),
   };
+}
+
+export function redactSensitiveText(value: string) {
+  return value
+    .replace(/\b(?:\d[ -]?){13,19}\b/g, '[REDACTED_PAYMENT_CARD]')
+    .replace(/\b(?:cvv|cvc|security code|セキュリティコード)\s*[:=]?\s*\d{3,4}\b/gi, '[REDACTED_PAYMENT_CODE]')
+    .replace(/\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9_]{12,}\b/g, '[REDACTED_SECRET]')
+    .replace(/\b(?:ghp|github_pat|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b/g, '[REDACTED_SECRET]')
+    .replace(/\b(?:api[_-]?key|secret|token|password|passwd|bearer)\s*[:=]\s*["']?[^"'\s,;]{8,}/gi, '$1=[REDACTED_SECRET]')
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '[REDACTED_EMAIL]');
 }
 
 function isUrgencyReason(value: unknown): value is 'critical_severity' | 'critical_impact' | 'repeated_feedback_threshold' {

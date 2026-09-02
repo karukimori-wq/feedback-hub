@@ -29,6 +29,8 @@ Source apps own the visible UI. Feedback Hub owns intake, AI understanding, grou
 
 Unknown future `appId` values receive a generic config so new apps can start integration before a formal app registry update.
 
+Numeria Studio and Velvet are the release-ready source apps for the Free / Pro launch. Both plans may submit questions, bugs, improvements, feature requests, UX feedback, and other feedback. Bug reports are never blocked by plan.
+
 ## Get App Config
 
 ```http
@@ -52,8 +54,10 @@ The response tells the source app which label, endpoint, fields, and ownership m
     "followUpEndpointTemplate": "/api/embed/conversations/{conversationId}/messages",
     "conversationEndpointTemplate": "/api/embed/conversations/{conversationId}",
     "compatibleIntakeEndpoint": "/api/feedback/intake",
-    "requiredFields": ["appId", "appName", "workspaceId", "userId", "initialMessage"],
-    "autoContextFields": ["route", "screenName", "appVersion", "device", "browser", "occurredAt"],
+    "requiredFields": ["sourceApp", "appVersion", "planId", "workspaceId", "userId", "currentScreen", "category", "occurredAt", "correlationId", "initialMessage"],
+    "autoContextFields": ["route", "screenName", "currentScreen", "appVersion", "planId", "device", "browser", "occurredAt", "correlationId"],
+    "acceptedPlanIds": ["free", "pro", "business"],
+    "bugReportsRateLimitedByPlan": false,
     "conversationModel": ["Conversation", "Message", "AI Analysis", "Issue"],
     "supportedCategories": ["Question", "Bug", "Improvement", "Feature Request", "UX Feedback", "Other"],
     "responseModes": ["show_received", "ask_follow_up"],
@@ -72,20 +76,36 @@ Content-Type: application/json
 ```json
 {
   "appId": "numeria-studio",
+  "sourceApp": "numeria-studio",
   "appName": "Numeria Studio",
+  "planId": "free",
   "workspaceId": "ws_123",
   "userId": "user_456",
   "initialMessage": "保存できません",
   "route": "/sessions/abc",
   "screenName": "鑑定詳細",
+  "currentScreen": "鑑定詳細",
+  "category": "Bug",
   "appVersion": "0.1.0",
   "device": "mobile",
   "browser": "Safari",
-  "occurredAt": "2026-08-31T00:00:00.000Z"
+  "occurredAt": "2026-08-31T00:00:00.000Z",
+  "correlationId": "req_01J..."
 }
 ```
 
 `POST /api/embed/feedback` uses the same backend flow as `POST /api/feedback/intake`. It creates a Conversation, stores the first Message, asks AI Platform Core for analysis, links or creates an Issue, and returns the intake decision.
+
+Do not send payment details, raw card numbers, API keys, tokens, passwords, or secret values in the message body. Feedback Hub also redacts common payment and secret-like values before persistence as a defense-in-depth measure.
+
+## Release Classification Notes
+
+| User voice | Expected classification |
+| --- | --- |
+| Free usage cap, free limit, monthly limit questions | `Question` with `free-plan-limit-question` grouping |
+| Pro purchase, upgrade, or entitlement did not reflect | `Bug` with `pro-upgrade-entitlement` grouping |
+| Billing or upgrade blocks that stop paid usage | Critical urgent notification candidate |
+| Data disappeared, cannot save, data does not remain | Critical urgent notification candidate |
 
 ## Minimal Client Flow
 
@@ -141,6 +161,7 @@ Feedback Hub admins can use this endpoint to confirm which source apps are sendi
 Important response fields:
 
 - `conversation_count`: Feedback conversations received from the app.
+- `plan_id`: Plan segment for the row, such as `free`, `pro`, or `unknown`.
 - `open_conversation_count`: Conversations still open.
 - `issue_count`: Canonical Issues linked from the app's feedback.
 - `urgent_issue_count`: Open critical or repeated Issues linked from the app.

@@ -24,12 +24,23 @@ describe('contract endpoints', () => {
       professionalIdRequired: boolean;
       aiProvider: string;
       localAiUsage: string;
+      supportedSourceApps: string[];
+      releaseReadySourceApps: string[];
+      acceptedPlanIds: string[];
+      bugReportsRateLimitedByPlan: boolean;
+      sensitiveBodyRedaction: boolean;
       endpoints: string[];
     };
     expect(body.identityMode).toBe('workspaceId+userId');
     expect(body.professionalIdRequired).toBe(false);
     expect(body.aiProvider).toBe('ai-platform-core');
     expect(body.localAiUsage).toBe('fallback-only');
+    expect(body.supportedSourceApps).toContain('numeria-studio');
+    expect(body.supportedSourceApps).toContain('velvet');
+    expect(body.releaseReadySourceApps).toEqual(['numeria-studio', 'velvet']);
+    expect(body.acceptedPlanIds).toEqual(['free', 'pro', 'business']);
+    expect(body.bugReportsRateLimitedByPlan).toBe(false);
+    expect(body.sensitiveBodyRedaction).toBe(true);
     expect(body.endpoints).toContain('GET /api/embed/config');
     expect(body.endpoints).toContain('POST /api/embed/feedback');
     expect(body.endpoints).toContain('GET /api/embed/conversations/:conversationId');
@@ -115,6 +126,8 @@ describe('contract endpoints', () => {
         conversationEndpointTemplate: string;
         requiredFields: string[];
         autoContextFields: string[];
+        acceptedPlanIds: string[];
+        bugReportsRateLimitedByPlan: boolean;
         rawVoicePreserved: boolean;
       };
     };
@@ -128,8 +141,19 @@ describe('contract endpoints', () => {
     expect(body.config.intakeEndpoint).toBe('/api/embed/feedback');
     expect(body.config.followUpEndpointTemplate).toBe('/api/embed/conversations/{conversationId}/messages');
     expect(body.config.conversationEndpointTemplate).toBe('/api/embed/conversations/{conversationId}');
+    expect(body.config.requiredFields).toContain('sourceApp');
+    expect(body.config.requiredFields).toContain('appVersion');
+    expect(body.config.requiredFields).toContain('planId');
+    expect(body.config.requiredFields).toContain('currentScreen');
+    expect(body.config.requiredFields).toContain('category');
+    expect(body.config.requiredFields).toContain('occurredAt');
+    expect(body.config.requiredFields).toContain('correlationId');
     expect(body.config.requiredFields).toContain('initialMessage');
     expect(body.config.autoContextFields).toContain('route');
+    expect(body.config.autoContextFields).toContain('planId');
+    expect(body.config.autoContextFields).toContain('correlationId');
+    expect(body.config.acceptedPlanIds).toEqual(['free', 'pro', 'business']);
+    expect(body.config.bugReportsRateLimitedByPlan).toBe(false);
     expect(body.config.rawVoicePreserved).toBe(true);
   });
 
@@ -192,6 +216,15 @@ describe('contract endpoints', () => {
     expect(body.errorCode).toBe('VALIDATION_ERROR');
   });
 
+  it('validates conversation list plan filters', async () => {
+    const response = await app.request('/api/feedback/conversations?planId=starter', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
   it('validates conversation follow-up query limits before persistence', async () => {
     const response = await app.request('/api/feedback/conversations/conv_test/follow-ups?limit=100', {}, env);
 
@@ -246,6 +279,15 @@ describe('contract endpoints', () => {
     expect(body.errorCode).toBe('VALIDATION_ERROR');
   });
 
+  it('validates admin inbox plan filters before persistence', async () => {
+    const response = await app.request('/api/admin/inbox?planId=enterprise', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
   it('validates admin triage queue query limits', async () => {
     const response = await app.request('/api/admin/triage-queue?limit=500', {}, env);
 
@@ -275,6 +317,15 @@ describe('contract endpoints', () => {
 
   it('validates admin intake metrics date filters before persistence', async () => {
     const response = await app.request('/api/admin/intake-metrics?since=yesterday', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('validates admin intake metrics plan filters before persistence', async () => {
+    const response = await app.request('/api/admin/intake-metrics?planId=starter', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };

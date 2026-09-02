@@ -2,15 +2,20 @@ import { z } from 'zod';
 
 export const createConversationSchema = z.object({
   appId: z.string().min(1),
+  sourceApp: z.string().min(1).optional(),
   appName: z.string().min(1),
+  planId: z.enum(['free', 'pro', 'business']).optional(),
   workspaceId: z.string().min(1),
   userId: z.string().min(1),
   route: z.string().optional(),
   screenName: z.string().optional(),
+  currentScreen: z.string().optional(),
+  category: z.enum(['Question', 'Bug', 'Improvement', 'Feature Request', 'UX Feedback', 'Other']).optional(),
   appVersion: z.string().optional(),
   device: z.string().optional(),
   browser: z.string().optional(),
   occurredAt: z.string().datetime().optional(),
+  correlationId: z.string().min(1).optional(),
   initialMessage: z.string().min(1).optional(),
 });
 
@@ -38,6 +43,8 @@ export const updateConversationStatusSchema = z.object({
 export const listConversationsQuerySchema = z.object({
   workspaceId: z.string().min(1).optional(),
   appId: z.string().min(1).optional(),
+  sourceApp: z.string().min(1).optional(),
+  planId: z.enum(['free', 'pro', 'business']).optional(),
   status: z.enum(['open', 'closed']).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
@@ -69,6 +76,8 @@ export const adminTriageQueueQuerySchema = z.object({
 export const adminIntakeMetricsQuerySchema = z.object({
   workspaceId: z.string().min(1).optional(),
   appId: z.string().min(1).optional(),
+  sourceApp: z.string().min(1).optional(),
+  planId: z.enum(['free', 'pro', 'business']).optional(),
   since: z.string().datetime().optional(),
 });
 
