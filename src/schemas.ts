@@ -72,6 +72,11 @@ export const adminIntakeMetricsQuerySchema = z.object({
   since: z.string().datetime().optional(),
 });
 
+export const adminAppSummaryQuerySchema = z.object({
+  since: z.string().datetime().optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+});
+
 export const adminMetadataQualityQuerySchema = z.object({
   workspaceId: z.string().min(1).optional(),
   appId: z.string().min(1).optional(),
@@ -136,6 +141,7 @@ export type CreateEmbedConversationMessageInput = z.infer<typeof createEmbedConv
 export type ConversationFollowUpsQuery = z.infer<typeof conversationFollowUpsQuerySchema>;
 export type AdminFollowUpQueueQuery = z.infer<typeof adminFollowUpQueueQuerySchema>;
 export type AdminActionBoardQuery = z.infer<typeof adminActionBoardQuerySchema>;
+export type AdminAppSummaryQuery = z.infer<typeof adminAppSummaryQuerySchema>;
 export type AdminIssueBriefsQuery = z.infer<typeof adminIssueBriefsQuerySchema>;
 export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema>;
 export type AdminInboxQuery = z.infer<typeof adminInboxQuerySchema>;

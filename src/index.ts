@@ -10,6 +10,7 @@ import {
   getEmbedConfig,
   createMessage,
   getAdminActionBoard,
+  getAdminAppSummary,
   getAdminFollowUpQueue,
   getAdminInbox,
   getAdminIntakeMetrics,
@@ -35,7 +36,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminActionBoardQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createEmbedConversationMessageSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminActionBoardQuerySchema, adminAppSummaryQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createEmbedConversationMessageSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -106,6 +107,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/feedback/notifications/urgent',
     'GET /api/feedback/notifications/urgent/summary',
     'GET /api/admin/action-board',
+    'GET /api/admin/app-summary',
     'GET /api/admin/follow-up-queue',
     'GET /api/admin/inbox',
     'GET /api/admin/intake-metrics',
@@ -281,6 +283,14 @@ app.get('/api/admin/action-board', async (c) => {
     limit: c.req.query('limit'),
   });
   return c.json({ status: 'success', actionBoard: await getAdminActionBoard(c.env.DB, query) });
+});
+
+app.get('/api/admin/app-summary', async (c) => {
+  const query = adminAppSummaryQuerySchema.parse({
+    since: c.req.query('since'),
+    limit: c.req.query('limit'),
+  });
+  return c.json({ status: 'success', appSummary: await getAdminAppSummary(c.env.DB, query) });
 });
 
 app.get('/api/admin/follow-up-queue', async (c) => {

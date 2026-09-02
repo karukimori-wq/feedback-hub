@@ -92,6 +92,8 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns urgent notification totals, reason counts, and top priority score for admin badges and alert routing.
 - `GET /api/admin/action-board`
   - Returns prioritized Issues with urgency reasons, recommended admin actions, and action reason codes.
+- `GET /api/admin/app-summary`
+  - Returns per-source-app intake health, open conversations, Issue totals, urgent Issue totals, follow-up demand, and embed contract config.
 - `GET /api/admin/follow-up-queue`
   - Returns open conversations where the latest AI analysis suggested follow-up questions.
 - `GET /api/admin/inbox`
@@ -160,6 +162,8 @@ Admin issue brief filters: `category`, `status`, and `limit`.
 Admin metadata quality filters: `workspaceId`, `appId`, and `since`.
 
 Admin action board filters: `status` and `limit`.
+
+Admin app summary filters: `since` and `limit`.
 
 Feedback ranking filters: `status` and `limit`.
 

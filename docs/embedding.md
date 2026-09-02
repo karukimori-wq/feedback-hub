@@ -130,6 +130,23 @@ Important response fields:
 - `intake.nextAction`: `show_received` or `ask_follow_up`.
 - `intake.followUpQuestions`: Questions the source app can show to the user.
 
+## Admin Integration Check
+
+```http
+GET /api/admin/app-summary?limit=10
+```
+
+Feedback Hub admins can use this endpoint to confirm which source apps are sending feedback and whether any app is generating urgent Issues or follow-up demand.
+
+Important response fields:
+
+- `conversation_count`: Feedback conversations received from the app.
+- `open_conversation_count`: Conversations still open.
+- `issue_count`: Canonical Issues linked from the app's feedback.
+- `urgent_issue_count`: Open critical or repeated Issues linked from the app.
+- `follow_up_analysis_count`: Analyses where AI requested more detail.
+- `embedConfig`: The current question box contract for that app.
+
 ## Response Handling
 
 Successful intake returns `201`.

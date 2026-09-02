@@ -3,6 +3,7 @@ import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnal
 import { newId, nowIso } from './ids';
 import type {
   AdminActionBoardQuery,
+  AdminAppSummaryQuery,
   AdminInboxQuery,
   AdminIssueBriefsQuery,
   AdminFollowUpQueueQuery,
@@ -975,6 +976,54 @@ export async function getAdminIntakeMetrics(db: D1Database, query: AdminIntakeMe
       workspaceId: query.workspaceId ?? null,
       appId: query.appId ?? null,
       since: query.since ?? null,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getAdminAppSummary(db: D1Database, query: AdminAppSummaryQuery = {}) {
+  const conditions = [];
+  const values: Array<string | number> = [];
+
+  if (query.since) {
+    conditions.push('c.created_at >= ?');
+    values.push(query.since);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limit = query.limit ?? 20;
+  const result = await db.prepare(`
+    SELECT
+      c.app_id,
+      c.app_name,
+      COUNT(DISTINCT c.conversation_id) AS conversation_count,
+      SUM(CASE WHEN c.status = 'open' THEN 1 ELSE 0 END) AS open_conversation_count,
+      SUM(CASE WHEN c.status = 'closed' THEN 1 ELSE 0 END) AS closed_conversation_count,
+      COUNT(DISTINCT m.message_id) AS message_count,
+      COUNT(DISTINCT a.analysis_id) AS analysis_count,
+      COUNT(DISTINCT fil.issue_id) AS issue_count,
+      COUNT(DISTINCT CASE WHEN fi.status = 'open' AND (fi.severity = 'Critical' OR fi.impact = 'Critical' OR fi.count >= 30) THEN fi.issue_id END) AS urgent_issue_count,
+      COUNT(DISTINCT CASE WHEN a.suggested_questions_json IS NOT NULL AND a.suggested_questions_json != '[]' THEN a.analysis_id END) AS follow_up_analysis_count,
+      MAX(c.updated_at) AS last_conversation_at
+    FROM feedback_conversations c
+    LEFT JOIN feedback_messages m ON m.conversation_id = c.conversation_id
+    LEFT JOIN feedback_ai_analyses a ON a.conversation_id = c.conversation_id
+    LEFT JOIN feedback_issue_links fil ON fil.conversation_id = c.conversation_id
+    LEFT JOIN feedback_issues fi ON fi.issue_id = fil.issue_id
+    ${where}
+    GROUP BY c.app_id, c.app_name
+    ORDER BY urgent_issue_count DESC, conversation_count DESC, last_conversation_at DESC
+    LIMIT ?
+  `).bind(...values, limit).all<Record<string, unknown>>();
+
+  return {
+    items: result.results.map((item) => ({
+      ...item,
+      embedConfig: getEmbedConfig({ appId: String(item.app_id) }),
+    })),
+    filters: {
+      since: query.since ?? null,
+      limit,
     },
     generatedAt: nowIso(),
   };
