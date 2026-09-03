@@ -141,6 +141,7 @@ npx wrangler d1 create feedback-hub
 npm run db:migrate:remote
 npm run db:migrate:remote:release-intake-context
 npm run deploy
+FEEDBACK_HUB_WORKER_URL=https://your-worker.example npm run smoke:release-intake
 ```
 
 GitHub Actions production deployment is available through the `Cloudflare Production` workflow. Required repository secrets:

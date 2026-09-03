@@ -104,6 +104,14 @@ The workflow runs typecheck, tests, build, injects the D1 database ID into `wran
 
 Replace `WORKER_URL` with the deployed Worker URL.
 
+For the release intake smoke path, run:
+
+```bash
+FEEDBACK_HUB_WORKER_URL="$WORKER_URL" npm run smoke:release-intake
+```
+
+This checks health, contract status, release readiness, Numeria Studio Free intake, and Velvet Pro intake without sending payment details or secret values.
+
 ```bash
 curl "$WORKER_URL/health"
 curl "$WORKER_URL/version"

@@ -12,7 +12,8 @@
     "db:migrate:local": "wrangler d1 execute feedback-hub --local --file ./migrations/0001_initial.sql",
     "db:migrate:local:release-intake-context": "node scripts/apply-release-intake-context-migration.mjs --local",
     "db:migrate:remote": "wrangler d1 execute feedback-hub --remote --file ./migrations/0001_initial.sql",
-    "db:migrate:remote:release-intake-context": "node scripts/apply-release-intake-context-migration.mjs --remote"
+    "db:migrate:remote:release-intake-context": "node scripts/apply-release-intake-context-migration.mjs --remote",
+    "smoke:release-intake": "node scripts/smoke-release-intake.mjs"
   },
   "dependencies": {
     "hono": "^4.6.20",
