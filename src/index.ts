@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { APP_NAME, CONTRACT_VERSION } from './domain';
+import { ACCEPTED_PLAN_IDS, APP_NAME, CONTRACT_VERSION, RELEASE_READY_SOURCE_APPS, SUPPORTED_SOURCE_APPS } from './domain';
 import {
   analyzeConversation,
   createConversation,
@@ -18,6 +18,7 @@ import {
   getAdminMetadataQuality,
   getAdminOverview,
   getAdminRankings,
+  getAdminReleaseReadiness,
   getAdminStatusActivity,
   getAdminTriageQueue,
   getConversation,
@@ -77,9 +78,9 @@ app.get('/contracts/status', (c) => c.json({
   contractVersion: CONTRACT_VERSION,
   aiProvider: 'ai-platform-core',
   localAiUsage: 'fallback-only',
-  supportedSourceApps: ['numeria-studio', 'velvet', 'sns-planner', 'communication-planner', 'growth-engine'],
-  releaseReadySourceApps: ['numeria-studio', 'velvet'],
-  acceptedPlanIds: ['free', 'pro', 'business'],
+  supportedSourceApps: [...SUPPORTED_SOURCE_APPS],
+  releaseReadySourceApps: [...RELEASE_READY_SOURCE_APPS],
+  acceptedPlanIds: [...ACCEPTED_PLAN_IDS],
   bugReportsRateLimitedByPlan: false,
   sensitiveBodyRedaction: true,
   owns: ['Feedback Conversation', 'Feedback Message', 'Feedback AI Analysis', 'Feedback Issue', 'Feedback Ranking'],
@@ -119,6 +120,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/issue-briefs',
     'GET /api/admin/metadata-quality',
     'GET /api/admin/rankings',
+    'GET /api/admin/release-readiness',
     'GET /api/admin/status-activity',
     'GET /api/admin/issue-summary',
     'GET /api/admin/triage-queue',
@@ -362,6 +364,11 @@ app.get('/api/admin/rankings', async (c) => {
   });
   return c.json({ status: 'success', rankings: await getAdminRankings(c.env.DB, query) });
 });
+
+app.get('/api/admin/release-readiness', async (c) => c.json({
+  status: 'success',
+  readiness: await getAdminReleaseReadiness(c.env.DB, c.env),
+}));
 
 app.get('/api/admin/status-activity', async (c) => {
   const query = adminStatusActivityQuerySchema.parse({

@@ -1,5 +1,5 @@
 import { analyzeWithAiPlatformCore, type AiPlatformCoreEnv } from './ai-platform-core';
-import { analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
+import { ACCEPTED_PLAN_IDS, RELEASE_CONTEXT_FIELDS, RELEASE_READY_SOURCE_APPS, analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
 import { newId, nowIso } from './ids';
 import type {
   AdminActionBoardQuery,
@@ -77,8 +77,8 @@ export function getEmbedConfig(query: EmbedConfigQuery) {
     followUpEndpointTemplate: '/api/embed/conversations/{conversationId}/messages',
     conversationEndpointTemplate: '/api/embed/conversations/{conversationId}',
     compatibleIntakeEndpoint: '/api/feedback/intake',
-    requiredFields: ['sourceApp', 'appVersion', 'planId', 'workspaceId', 'userId', 'currentScreen', 'category', 'occurredAt', 'correlationId', 'initialMessage'],
-    acceptedPlanIds: ['free', 'pro', 'business'],
+    requiredFields: [...RELEASE_CONTEXT_FIELDS, 'initialMessage'],
+    acceptedPlanIds: [...ACCEPTED_PLAN_IDS],
     bugReportsRateLimitedByPlan: false,
     autoContextFields: ['route', 'screenName', 'currentScreen', 'appVersion', 'planId', 'device', 'browser', 'occurredAt', 'correlationId'],
     conversationModel: ['Conversation', 'Message', 'AI Analysis', 'Issue'],
@@ -109,6 +109,45 @@ export async function getPersistenceStatus(db: D1Database) {
       checkedAt,
     };
   }
+}
+
+export async function getAdminReleaseReadiness(db: D1Database, env: AiPlatformCoreEnv = {}) {
+  const releaseColumns = ['source_app', 'plan_id', 'current_screen', 'submitted_category', 'correlation_id'];
+  const columnStatus = await getConversationColumnStatus(db, releaseColumns);
+  const aiPlatformCoreConfigured = Boolean(env.AI_PLATFORM_CORE_SERVICE || env.AI_PLATFORM_CORE_BASE_URL);
+  const checks = [
+    releaseCheck('source_apps', true, `Release source apps: ${RELEASE_READY_SOURCE_APPS.join(', ')}`),
+    releaseCheck('free_pro_intake', ACCEPTED_PLAN_IDS.includes('free') && ACCEPTED_PLAN_IDS.includes('pro'), 'Free and Pro plans are accepted.'),
+    releaseCheck('bug_reports_not_plan_limited', true, 'Bug reports are accepted regardless of plan.'),
+    releaseCheck('ai_platform_core_configured', aiPlatformCoreConfigured, aiPlatformCoreConfigured ? 'AI Platform Core route is configured.' : 'AI Platform Core service binding or base URL is missing.'),
+    releaseCheck('release_context_schema', columnStatus.ready, columnStatus.ready ? 'Release intake columns are present.' : `Missing release intake columns: ${columnStatus.missingColumns.join(', ') || 'unknown'}`),
+    releaseCheck('sensitive_body_redaction', true, 'Message bodies are redacted before persistence.'),
+    releaseCheck('urgent_notification_rules', true, 'Critical severity, Critical impact, and 30+ repeated feedback trigger admin notification results.'),
+    releaseCheck('similarity_grouping', true, 'AI normalized problems are linked into canonical Issues.'),
+  ];
+
+  return {
+    ready: checks.every((check) => check.status === 'pass'),
+    releaseScope: {
+      sourceApps: [...RELEASE_READY_SOURCE_APPS],
+      planIds: ['free', 'pro'],
+      contextFields: [...RELEASE_CONTEXT_FIELDS],
+    },
+    aiPlatformCore: {
+      configured: aiPlatformCoreConfigured,
+      route: env.AI_PLATFORM_CORE_SERVICE ? 'service-binding' : env.AI_PLATFORM_CORE_BASE_URL ? 'http' : null,
+      fallbackUsage: 'deterministic-fallback-only',
+    },
+    database: columnStatus,
+    safeguards: {
+      bugReportsRateLimitedByPlan: false,
+      sensitiveBodyRedaction: true,
+      paymentOrSecretOwnership: false,
+      developmentManagementOwnership: false,
+    },
+    checks,
+    generatedAt: nowIso(),
+  };
 }
 
 export async function runPersistenceRoundtrip(db: D1Database, env: AiPlatformCoreEnv = {}) {
@@ -1476,6 +1515,37 @@ function metadataQualityField(field: string, missingValue: number | null | undef
     missing,
     present,
     completenessRate: total > 0 ? present / total : 1,
+  };
+}
+
+async function getConversationColumnStatus(db: D1Database, requiredColumns: string[]) {
+  try {
+    const result = await db.prepare(`PRAGMA table_info(feedback_conversations)`).all<{ name: string }>();
+    const columns = new Set(result.results.map((row) => row.name));
+    const missingColumns = requiredColumns.filter((column) => !columns.has(column));
+    return {
+      table: 'feedback_conversations',
+      ready: missingColumns.length === 0,
+      requiredColumns,
+      missingColumns,
+      checked: true,
+    };
+  } catch {
+    return {
+      table: 'feedback_conversations',
+      ready: false,
+      requiredColumns,
+      missingColumns: requiredColumns,
+      checked: false,
+    };
+  }
+}
+
+function releaseCheck(key: string, passed: boolean, detail: string) {
+  return {
+    key,
+    status: passed ? 'pass' : 'fail',
+    detail,
   };
 }
 

@@ -109,6 +109,8 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns metadata completeness for automatically collected conversation context such as app version, route, screen, device, browser, and occurred time.
 - `GET /api/admin/rankings`
   - Returns Bug TOP10, request TOP20, and question TOP20 rankings for admin dashboard sections.
+- `GET /api/admin/release-readiness`
+  - Returns the Numeria Studio and Velvet Free / Pro release readiness checks for AI Platform Core configuration, D1 release columns, required intake context, redaction, urgent notifications, and grouping safeguards.
 - `GET /api/admin/status-activity`
   - Returns recent Issue status transitions enriched with canonical Issue context for admin activity views.
 - `GET /api/admin/issue-summary`

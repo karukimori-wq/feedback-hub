@@ -64,10 +64,70 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/admin/issue-briefs');
     expect(body.endpoints).toContain('GET /api/admin/metadata-quality');
     expect(body.endpoints).toContain('GET /api/admin/rankings');
+    expect(body.endpoints).toContain('GET /api/admin/release-readiness');
     expect(body.endpoints).toContain('GET /api/admin/status-activity');
     expect(body.endpoints).toContain('GET /api/admin/issue-summary');
     expect(body.endpoints).toContain('GET /api/admin/triage-queue');
     expect(body.endpoints).toContain('GET /api/admin/overview');
+  });
+
+  it('returns release readiness when AI Platform Core and release columns are configured', async () => {
+    const response = await app.request('/api/admin/release-readiness', {}, {
+      ...env,
+      AI_PLATFORM_CORE_BASE_URL: 'https://ai-platform-core.test',
+      DB: d1WithConversationColumns([
+        'conversation_id',
+        'source_app',
+        'plan_id',
+        'current_screen',
+        'submitted_category',
+        'correlation_id',
+      ]),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      readiness: {
+        ready: boolean;
+        releaseScope: { sourceApps: string[]; planIds: string[]; contextFields: string[] };
+        aiPlatformCore: { configured: boolean; route: string };
+        database: { ready: boolean; missingColumns: string[] };
+        safeguards: { bugReportsRateLimitedByPlan: boolean; sensitiveBodyRedaction: boolean };
+      };
+    };
+    expect(body.readiness.ready).toBe(true);
+    expect(body.readiness.releaseScope.sourceApps).toEqual(['numeria-studio', 'velvet']);
+    expect(body.readiness.releaseScope.planIds).toEqual(['free', 'pro']);
+    expect(body.readiness.releaseScope.contextFields).toContain('correlationId');
+    expect(body.readiness.aiPlatformCore.configured).toBe(true);
+    expect(body.readiness.aiPlatformCore.route).toBe('http');
+    expect(body.readiness.database.ready).toBe(true);
+    expect(body.readiness.database.missingColumns).toEqual([]);
+    expect(body.readiness.safeguards.bugReportsRateLimitedByPlan).toBe(false);
+    expect(body.readiness.safeguards.sensitiveBodyRedaction).toBe(true);
+  });
+
+  it('marks release readiness as not ready when AI Platform Core or release columns are missing', async () => {
+    const response = await app.request('/api/admin/release-readiness', {}, {
+      ...env,
+      DB: d1WithConversationColumns(['conversation_id']),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      readiness: {
+        ready: boolean;
+        aiPlatformCore: { configured: boolean; route: null };
+        database: { ready: boolean; missingColumns: string[] };
+        checks: Array<{ key: string; status: string }>;
+      };
+    };
+    expect(body.readiness.ready).toBe(false);
+    expect(body.readiness.aiPlatformCore.configured).toBe(false);
+    expect(body.readiness.aiPlatformCore.route).toBeNull();
+    expect(body.readiness.database.ready).toBe(false);
+    expect(body.readiness.database.missingColumns).toContain('source_app');
+    expect(body.readiness.checks).toContainEqual({ key: 'ai_platform_core_configured', status: 'fail', detail: 'AI Platform Core service binding or base URL is missing.' });
   });
 
   it('returns CORS preflight headers', async () => {
@@ -422,3 +482,13 @@ describe('contract endpoints', () => {
     expect(body.errorCode).toBe('VALIDATION_ERROR');
   });
 });
+
+function d1WithConversationColumns(columns: string[]) {
+  return {
+    prepare: () => ({
+      all: async () => ({
+        results: columns.map((name) => ({ name })),
+      }),
+    }),
+  } as unknown as D1Database;
+}

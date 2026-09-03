@@ -1,5 +1,9 @@
 export const APP_NAME = 'feedback-hub';
 export const CONTRACT_VERSION = '0.1.0';
+export const SUPPORTED_SOURCE_APPS = ['numeria-studio', 'velvet', 'sns-planner', 'communication-planner', 'growth-engine'] as const;
+export const RELEASE_READY_SOURCE_APPS = ['numeria-studio', 'velvet'] as const;
+export const ACCEPTED_PLAN_IDS = ['free', 'pro', 'business'] as const;
+export const RELEASE_CONTEXT_FIELDS = ['sourceApp', 'appVersion', 'planId', 'workspaceId', 'userId', 'currentScreen', 'category', 'occurredAt', 'correlationId'] as const;
 
 export type FeedbackCategory = 'Question' | 'Bug' | 'Improvement' | 'Feature Request' | 'UX Feedback' | 'Other';
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low';
