@@ -137,6 +137,7 @@ For Cloudflare deployment:
 ```bash
 npx wrangler d1 create feedback-hub
 npm run db:migrate:remote
+npm run db:migrate:remote:release-intake-context
 npm run deploy
 ```
 

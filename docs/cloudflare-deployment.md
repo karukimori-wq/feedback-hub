@@ -8,7 +8,9 @@ This runbook covers the first Cloudflare deployment for Feedback Hub.
 - Database: Cloudflare D1
 - Worker entry: `src/index.ts`
 - D1 binding: `DB`
-- Migration: `migrations/0001_initial.sql`
+- Migrations:
+  - `migrations/0001_initial.sql`
+  - `migrations/0002_release_intake_context.sql`
 
 ## Prerequisites
 
@@ -66,7 +68,15 @@ If service binding is not available, set `AI_PLATFORM_CORE_BASE_URL` instead. Us
 npm run db:migrate:remote
 ```
 
-5. Deploy the Worker.
+5. Apply the release intake context migration.
+
+```bash
+npm run db:migrate:remote:release-intake-context
+```
+
+This step adds `sourceApp`, `planId`, `currentScreen`, submitted category, and `correlationId` columns. The package script is safe to run again if the release columns are already present.
+
+6. Deploy the Worker.
 
 ```bash
 npm run deploy
@@ -88,7 +98,7 @@ npx wrangler d1 create feedback-hub
 5. Select `Cloudflare Production`.
 6. Run workflow from `main`.
 
-The workflow runs typecheck, tests, build, injects the D1 database ID into `wrangler.jsonc`, applies the remote D1 migration, and deploys the Worker.
+The workflow runs typecheck, tests, build, injects the D1 database ID into `wrangler.jsonc`, applies the remote D1 migrations, and deploys the Worker.
 
 ## Production Smoke Tests
 
@@ -115,6 +125,7 @@ curl "$WORKER_URL/api/admin/app-summary?limit=10"
 curl "$WORKER_URL/api/admin/follow-up-queue?limit=10"
 curl "$WORKER_URL/api/admin/inbox?limit=10"
 curl "$WORKER_URL/api/admin/inbox?severity=Critical&impact=Critical&limit=10"
+curl "$WORKER_URL/api/admin/intake-metrics?sourceApp=numeria-studio&planId=free"
 curl "$WORKER_URL/api/admin/intake-metrics"
 curl "$WORKER_URL/api/admin/issue-briefs?limit=10"
 curl "$WORKER_URL/api/admin/metadata-quality"
@@ -129,29 +140,41 @@ curl -X POST "$WORKER_URL/api/feedback/intake" \
   -H "Content-Type: application/json" \
   -d '{
     "appId": "numeria-studio",
+    "sourceApp": "numeria-studio",
     "appName": "Numeria Studio",
+    "planId": "free",
     "workspaceId": "smoke_workspace",
     "userId": "smoke_user",
     "route": "/app/sessions",
     "screenName": "鑑定セッション",
+    "currentScreen": "鑑定セッション",
+    "category": "Bug",
     "appVersion": "0.1.0",
     "device": "smoke",
     "browser": "smoke",
+    "occurredAt": "2026-09-03T00:00:00.000Z",
+    "correlationId": "smoke_feedback_numeria_free_001",
     "initialMessage": "保存できない。登録してもデータが残らない"
   }'
 curl -X POST "$WORKER_URL/api/embed/feedback" \
   -H "Content-Type: application/json" \
   -d '{
     "appId": "velvet",
+    "sourceApp": "velvet",
     "appName": "Velvet",
+    "planId": "pro",
     "workspaceId": "smoke_workspace",
     "userId": "smoke_user",
     "route": "/app/chat",
     "screenName": "会話画面",
+    "currentScreen": "会話画面",
+    "category": "Bug",
     "appVersion": "0.1.0",
     "device": "smoke",
     "browser": "smoke",
-    "initialMessage": "チャットの返答が途中で止まりました"
+    "occurredAt": "2026-09-03T00:00:00.000Z",
+    "correlationId": "smoke_feedback_velvet_pro_001",
+    "initialMessage": "Proにアップグレードしたのに反映されません"
   }'
 curl -X POST "$WORKER_URL/api/embed/conversations/YOUR_CONVERSATION_ID/messages" \
   -H "Content-Type: application/json" \
@@ -184,6 +207,7 @@ Expected results:
 - `/api/admin/inbox?limit=10` returns recent conversations enriched with the latest message, AI analysis, and Issue link.
 - `/api/admin/inbox?severity=Critical&impact=Critical&limit=10` returns admin inbox items narrowed to high-priority AI analysis results.
 - `/api/admin/intake-metrics` returns intake, analysis, issue, urgent issue, app, and category totals for admin summary cards.
+- `/api/admin/intake-metrics?sourceApp=numeria-studio&planId=free` returns source-app and plan scoped totals.
 - `/api/admin/issue-briefs?limit=10` returns development-ready Issue briefs with priority context and representative source feedback.
 - `/api/admin/metadata-quality` returns metadata completeness for automatically collected conversation context.
 - `/api/admin/rankings` returns Bug TOP10, request TOP20, and question TOP20 sections.
@@ -211,6 +235,8 @@ Allowed request headers:
 - `X-User-Id`
 - `X-Request-Id`
 - `X-Correlation-Id`
+- `X-Source-App`
+- `X-Plan-Id`
 
 ## Validation Contract
 
