@@ -29,6 +29,7 @@ describe('contract endpoints', () => {
       acceptedPlanIds: string[];
       bugReportsRateLimitedByPlan: boolean;
       sensitiveBodyRedaction: boolean;
+      releaseSmoke: { command: string; checks: Array<{ key: string; method: string; path: string }> };
       endpoints: string[];
     };
     expect(body.identityMode).toBe('workspaceId+userId');
@@ -41,6 +42,9 @@ describe('contract endpoints', () => {
     expect(body.acceptedPlanIds).toEqual(['free', 'pro', 'business']);
     expect(body.bugReportsRateLimitedByPlan).toBe(false);
     expect(body.sensitiveBodyRedaction).toBe(true);
+    expect(body.releaseSmoke.command).toContain('smoke:release-intake');
+    expect(body.releaseSmoke.checks).toContainEqual({ key: 'release_readiness', method: 'GET', path: '/api/admin/release-readiness' });
+    expect(body.releaseSmoke.checks).toContainEqual({ key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' });
     expect(body.endpoints).toContain('GET /api/embed/config');
     expect(body.endpoints).toContain('POST /api/embed/feedback');
     expect(body.endpoints).toContain('GET /api/embed/conversations/:conversationId');
@@ -65,6 +69,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/admin/metadata-quality');
     expect(body.endpoints).toContain('GET /api/admin/rankings');
     expect(body.endpoints).toContain('GET /api/admin/release-readiness');
+    expect(body.endpoints).toContain('GET /api/admin/release-smoke-plan');
     expect(body.endpoints).toContain('GET /api/admin/status-activity');
     expect(body.endpoints).toContain('GET /api/admin/issue-summary');
     expect(body.endpoints).toContain('GET /api/admin/triage-queue');
@@ -128,6 +133,41 @@ describe('contract endpoints', () => {
     expect(body.readiness.database.ready).toBe(false);
     expect(body.readiness.database.missingColumns).toContain('source_app');
     expect(body.readiness.checks).toContainEqual({ key: 'ai_platform_core_configured', status: 'fail', detail: 'AI Platform Core service binding or base URL is missing.' });
+  });
+
+  it('returns the release smoke plan for external monitoring', async () => {
+    const response = await app.request('/api/admin/release-smoke-plan', {}, env);
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      smokePlan: {
+        sourceApps: string[];
+        planIds: string[];
+        command: string;
+        checks: Array<{ key: string; method: string; path: string }>;
+        samplePayloads: {
+          numeriaStudioFree: { appId: string; planId: string; requiredContextFields: string[] };
+          velvetPro: { appId: string; planId: string; requiredContextFields: string[] };
+        };
+        bodyRules: {
+          includePaymentDetails: boolean;
+          includeSecretValues: boolean;
+          rawVoicePreservedAfterRedaction: boolean;
+        };
+      };
+    };
+    expect(body.smokePlan.sourceApps).toEqual(['numeria-studio', 'velvet']);
+    expect(body.smokePlan.planIds).toEqual(['free', 'pro']);
+    expect(body.smokePlan.command).toContain('smoke:release-intake');
+    expect(body.smokePlan.checks).toContainEqual({ key: 'numeria_free_intake', method: 'POST', path: '/api/feedback/intake' });
+    expect(body.smokePlan.samplePayloads.numeriaStudioFree.appId).toBe('numeria-studio');
+    expect(body.smokePlan.samplePayloads.numeriaStudioFree.planId).toBe('free');
+    expect(body.smokePlan.samplePayloads.numeriaStudioFree.requiredContextFields).toContain('correlationId');
+    expect(body.smokePlan.samplePayloads.velvetPro.appId).toBe('velvet');
+    expect(body.smokePlan.samplePayloads.velvetPro.planId).toBe('pro');
+    expect(body.smokePlan.bodyRules.includePaymentDetails).toBe(false);
+    expect(body.smokePlan.bodyRules.includeSecretValues).toBe(false);
+    expect(body.smokePlan.bodyRules.rawVoicePreservedAfterRedaction).toBe(true);
   });
 
   it('returns CORS preflight headers', async () => {

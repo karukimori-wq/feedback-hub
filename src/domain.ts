@@ -4,6 +4,15 @@ export const SUPPORTED_SOURCE_APPS = ['numeria-studio', 'velvet', 'sns-planner',
 export const RELEASE_READY_SOURCE_APPS = ['numeria-studio', 'velvet'] as const;
 export const ACCEPTED_PLAN_IDS = ['free', 'pro', 'business'] as const;
 export const RELEASE_CONTEXT_FIELDS = ['sourceApp', 'appVersion', 'planId', 'workspaceId', 'userId', 'currentScreen', 'category', 'occurredAt', 'correlationId'] as const;
+export const RELEASE_SMOKE_CHECKS = [
+  { key: 'health', method: 'GET', path: '/health' },
+  { key: 'version', method: 'GET', path: '/version' },
+  { key: 'contracts_status', method: 'GET', path: '/contracts/status' },
+  { key: 'release_readiness', method: 'GET', path: '/api/admin/release-readiness' },
+  { key: 'numeria_free_metrics', method: 'GET', path: '/api/admin/intake-metrics?sourceApp=numeria-studio&planId=free' },
+  { key: 'numeria_free_intake', method: 'POST', path: '/api/feedback/intake' },
+  { key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' },
+] as const;
 
 export type FeedbackCategory = 'Question' | 'Bug' | 'Improvement' | 'Feature Request' | 'UX Feedback' | 'Other';
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low';

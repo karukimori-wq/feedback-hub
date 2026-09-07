@@ -111,6 +111,8 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns Bug TOP10, request TOP20, and question TOP20 rankings for admin dashboard sections.
 - `GET /api/admin/release-readiness`
   - Returns the Numeria Studio and Velvet Free / Pro release readiness checks for AI Platform Core configuration, D1 release columns, required intake context, redaction, urgent notifications, and grouping safeguards.
+- `GET /api/admin/release-smoke-plan`
+  - Returns the scripted release smoke check list, safe sample payload expectations, and body handling rules for Platform Admin or external contract checks.
 - `GET /api/admin/status-activity`
   - Returns recent Issue status transitions enriched with canonical Issue context for admin activity views.
 - `GET /api/admin/issue-summary`
@@ -175,6 +177,8 @@ Admin app summary filters: `since` and `limit`.
 Feedback ranking filters: `status` and `limit`.
 
 Admin ranking filters: `status`, `bugLimit`, `requestLimit`, and `questionLimit`.
+
+Admin release smoke plan filters: none.
 
 Admin status activity filters: `issueId`, `nextStatus`, `since`, and `limit`.
 

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { ACCEPTED_PLAN_IDS, APP_NAME, CONTRACT_VERSION, RELEASE_READY_SOURCE_APPS, SUPPORTED_SOURCE_APPS } from './domain';
+import { ACCEPTED_PLAN_IDS, APP_NAME, CONTRACT_VERSION, RELEASE_READY_SOURCE_APPS, RELEASE_SMOKE_CHECKS, SUPPORTED_SOURCE_APPS } from './domain';
 import {
   analyzeConversation,
   createConversation,
@@ -83,6 +83,10 @@ app.get('/contracts/status', (c) => c.json({
   acceptedPlanIds: [...ACCEPTED_PLAN_IDS],
   bugReportsRateLimitedByPlan: false,
   sensitiveBodyRedaction: true,
+  releaseSmoke: {
+    command: 'FEEDBACK_HUB_WORKER_URL="$WORKER_URL" npm run smoke:release-intake',
+    checks: [...RELEASE_SMOKE_CHECKS],
+  },
   owns: ['Feedback Conversation', 'Feedback Message', 'Feedback AI Analysis', 'Feedback Issue', 'Feedback Ranking'],
   doesNotOwn: ['Customer master', 'Lead lifecycle', 'Reservation', 'Payment', 'Sales / revenue', 'Engineering task management'],
   endpoints: [
@@ -121,6 +125,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/metadata-quality',
     'GET /api/admin/rankings',
     'GET /api/admin/release-readiness',
+    'GET /api/admin/release-smoke-plan',
     'GET /api/admin/status-activity',
     'GET /api/admin/issue-summary',
     'GET /api/admin/triage-queue',
@@ -368,6 +373,37 @@ app.get('/api/admin/rankings', async (c) => {
 app.get('/api/admin/release-readiness', async (c) => c.json({
   status: 'success',
   readiness: await getAdminReleaseReadiness(c.env.DB, c.env),
+}));
+
+app.get('/api/admin/release-smoke-plan', (c) => c.json({
+  status: 'success',
+  smokePlan: {
+    sourceApps: [...RELEASE_READY_SOURCE_APPS],
+    planIds: ['free', 'pro'],
+    command: 'FEEDBACK_HUB_WORKER_URL="$WORKER_URL" npm run smoke:release-intake',
+    checks: [...RELEASE_SMOKE_CHECKS],
+    samplePayloads: {
+      numeriaStudioFree: {
+        appId: 'numeria-studio',
+        sourceApp: 'numeria-studio',
+        planId: 'free',
+        category: 'Question',
+        requiredContextFields: ['sourceApp', 'appVersion', 'planId', 'workspaceId', 'userId', 'currentScreen', 'category', 'occurredAt', 'correlationId'],
+      },
+      velvetPro: {
+        appId: 'velvet',
+        sourceApp: 'velvet',
+        planId: 'pro',
+        category: 'Bug',
+        requiredContextFields: ['sourceApp', 'appVersion', 'planId', 'workspaceId', 'userId', 'currentScreen', 'category', 'occurredAt', 'correlationId'],
+      },
+    },
+    bodyRules: {
+      includePaymentDetails: false,
+      includeSecretValues: false,
+      rawVoicePreservedAfterRedaction: true,
+    },
+  },
 }));
 
 app.get('/api/admin/status-activity', async (c) => {
