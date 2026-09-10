@@ -51,6 +51,18 @@ await checkJson('GET /api/admin/source-app-contracts', '/api/admin/source-app-co
     && body.sourceAppContracts?.contracts?.some((contract) => contract.appId === 'numeria-studio' && contract.uiOwner === 'source-app' && contract.releasePlanIds?.includes('free'))
     && body.sourceAppContracts?.contracts?.some((contract) => contract.appId === 'velvet' && contract.aiProvider === 'ai-platform-core' && contract.releasePlanIds?.includes('pro')),
 });
+await checkJson('GET /api/admin/release-intake-summary', '/api/admin/release-intake-summary', {
+  method: 'GET',
+  expect: (body) => body.status === 'success'
+    && body.releaseIntakeSummary?.releaseScope?.sourceApps?.includes('numeria-studio')
+    && body.releaseIntakeSummary?.releaseScope?.sourceApps?.includes('velvet')
+    && body.releaseIntakeSummary?.releaseScope?.planIds?.includes('free')
+    && body.releaseIntakeSummary?.releaseScope?.planIds?.includes('pro')
+    && body.releaseIntakeSummary?.segments?.some((segment) => segment.sourceApp === 'numeria-studio' && segment.planId === 'free' && segment.contract?.uiOwner === 'source-app')
+    && body.releaseIntakeSummary?.segments?.some((segment) => segment.sourceApp === 'velvet' && segment.planId === 'pro' && segment.contract?.aiProvider === 'ai-platform-core')
+    && body.releaseIntakeSummary?.safeguards?.paymentDetailsStoredInBody === false
+    && body.releaseIntakeSummary?.safeguards?.secretValuesStoredInBody === false,
+});
 await checkJson('GET /api/admin/intake-metrics numeria free', '/api/admin/intake-metrics?sourceApp=numeria-studio&planId=free', {
   method: 'GET',
   expect: (body) => body.status === 'success' && body.metrics?.filters?.sourceApp === 'numeria-studio' && body.metrics?.filters?.planId === 'free',

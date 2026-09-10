@@ -11,6 +11,7 @@ export const RELEASE_SMOKE_CHECKS = [
   { key: 'release_readiness', method: 'GET', path: '/api/admin/release-readiness' },
   { key: 'external_intelligence_snapshot', method: 'GET', path: '/api/admin/external-intelligence-snapshot' },
   { key: 'source_app_contracts', method: 'GET', path: '/api/admin/source-app-contracts' },
+  { key: 'release_intake_summary', method: 'GET', path: '/api/admin/release-intake-summary' },
   { key: 'numeria_free_metrics', method: 'GET', path: '/api/admin/intake-metrics?sourceApp=numeria-studio&planId=free' },
   { key: 'numeria_free_intake', method: 'POST', path: '/api/feedback/intake' },
   { key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' },

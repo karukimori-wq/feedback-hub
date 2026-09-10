@@ -18,6 +18,7 @@ import {
   getAdminMetadataQuality,
   getAdminOverview,
   getAdminRankings,
+  getAdminReleaseIntakeSummary,
   getAdminReleaseReadiness,
   getAdminStatusActivity,
   getAdminTriageQueue,
@@ -38,7 +39,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminActionBoardQuerySchema, adminAppSummaryQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createEmbedConversationMessageSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminActionBoardQuerySchema, adminAppSummaryQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminReleaseIntakeSummaryQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createEmbedConversationMessageSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -125,6 +126,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/issue-briefs',
     'GET /api/admin/metadata-quality',
     'GET /api/admin/rankings',
+    'GET /api/admin/release-intake-summary',
     'GET /api/admin/release-readiness',
     'GET /api/admin/release-smoke-plan',
     'GET /api/admin/external-intelligence-snapshot',
@@ -373,6 +375,13 @@ app.get('/api/admin/rankings', async (c) => {
   return c.json({ status: 'success', rankings: await getAdminRankings(c.env.DB, query) });
 });
 
+app.get('/api/admin/release-intake-summary', async (c) => {
+  const query = adminReleaseIntakeSummaryQuerySchema.parse({
+    since: c.req.query('since'),
+  });
+  return c.json({ status: 'success', releaseIntakeSummary: await getAdminReleaseIntakeSummary(c.env.DB, query) });
+});
+
 app.get('/api/admin/release-readiness', async (c) => c.json({
   status: 'success',
   readiness: await getAdminReleaseReadiness(c.env.DB, c.env),
@@ -480,6 +489,7 @@ app.get('/api/admin/external-intelligence-snapshot', (c) => c.json({
         readinessEndpoint: '/api/admin/release-readiness',
         smokePlanEndpoint: '/api/admin/release-smoke-plan',
         sourceAppContractsEndpoint: '/api/admin/source-app-contracts',
+        releaseIntakeSummaryEndpoint: '/api/admin/release-intake-summary',
       },
     },
     generatedAt: new Date().toISOString(),

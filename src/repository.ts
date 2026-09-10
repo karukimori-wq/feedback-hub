@@ -9,6 +9,7 @@ import type {
   AdminFollowUpQueueQuery,
   AdminIntakeMetricsQuery,
   AdminMetadataQualityQuery,
+  AdminReleaseIntakeSummaryQuery,
   AdminRankingsQuery,
   AdminStatusActivityQuery,
   AdminTriageQueueQuery,
@@ -192,6 +193,123 @@ export async function getAdminReleaseReadiness(db: D1Database, env: AiPlatformCo
       developmentManagementOwnership: false,
     },
     checks,
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getAdminReleaseIntakeSummary(db: D1Database, query: AdminReleaseIntakeSummaryQuery = {}) {
+  const releaseSourceApps = [...RELEASE_READY_SOURCE_APPS];
+  const releasePlanIds = ['free', 'pro'];
+  const conditions = [`c.source_app IN (${releaseSourceApps.map(() => '?').join(', ')})`, `COALESCE(c.plan_id, 'unknown') IN (${releasePlanIds.map(() => '?').join(', ')})`];
+  const values: Array<string | number> = [...releaseSourceApps, ...releasePlanIds];
+
+  if (query.since) {
+    conditions.push('c.created_at >= ?');
+    values.push(query.since);
+  }
+
+  const result = await db.prepare(`
+    SELECT
+      c.source_app,
+      c.app_name,
+      COALESCE(c.plan_id, 'unknown') AS plan_id,
+      COUNT(DISTINCT c.conversation_id) AS conversation_count,
+      COUNT(DISTINCT a.analysis_id) AS analysis_count,
+      COUNT(DISTINCT fil.issue_id) AS issue_count,
+      COUNT(DISTINCT CASE WHEN fi.status = 'open' AND (fi.severity = 'Critical' OR fi.impact = 'Critical' OR fi.count >= 30) THEN fi.issue_id END) AS urgent_issue_count,
+      COUNT(DISTINCT CASE WHEN a.category = 'Question' AND a.normalized_problem = 'free-plan-limit-question' THEN a.analysis_id END) AS free_plan_limit_question_count,
+      COUNT(DISTINCT CASE WHEN a.normalized_problem = 'pro-upgrade-entitlement' THEN a.analysis_id END) AS pro_upgrade_issue_count,
+      COUNT(DISTINCT CASE WHEN a.normalized_problem = 'payment-checkout' THEN a.analysis_id END) AS billing_issue_count,
+      COUNT(DISTINCT CASE WHEN a.normalized_problem = 'save-persistence' THEN a.analysis_id END) AS data_loss_issue_count,
+      SUM(CASE WHEN
+        c.source_app IS NULL OR c.source_app = '' OR
+        c.app_version IS NULL OR c.app_version = '' OR
+        c.plan_id IS NULL OR c.plan_id = '' OR
+        c.workspace_id IS NULL OR c.workspace_id = '' OR
+        c.user_id IS NULL OR c.user_id = '' OR
+        c.current_screen IS NULL OR c.current_screen = '' OR
+        c.submitted_category IS NULL OR c.submitted_category = '' OR
+        c.occurred_at IS NULL OR c.occurred_at = '' OR
+        c.correlation_id IS NULL OR c.correlation_id = ''
+      THEN 1 ELSE 0 END) AS metadata_incomplete_count,
+      MAX(c.updated_at) AS last_conversation_at
+    FROM feedback_conversations c
+    LEFT JOIN feedback_ai_analyses a ON a.conversation_id = c.conversation_id
+    LEFT JOIN feedback_issue_links fil ON fil.conversation_id = c.conversation_id
+    LEFT JOIN feedback_issues fi ON fi.issue_id = fil.issue_id
+    WHERE ${conditions.join(' AND ')}
+    GROUP BY c.source_app, c.app_name, COALESCE(c.plan_id, 'unknown')
+    ORDER BY urgent_issue_count DESC, conversation_count DESC, last_conversation_at DESC
+  `).bind(...values).all<Record<string, unknown>>();
+
+  const rowsBySegment = new Map(result.results.map((row) => [`${row.source_app}:${row.plan_id}`, row]));
+  const contractByApp = new Map(getSourceAppContracts().contracts.map((contract) => [contract.sourceApp, contract]));
+  const segments = releaseSourceApps.flatMap((sourceApp) => releasePlanIds.map((planId) => {
+    const row = rowsBySegment.get(`${sourceApp}:${planId}`);
+    const contract = contractByApp.get(sourceApp);
+    const conversationCount = Number(row?.conversation_count ?? 0);
+    const urgentIssueCount = Number(row?.urgent_issue_count ?? 0);
+    const metadataIncompleteCount = Number(row?.metadata_incomplete_count ?? 0);
+    const attentionReasons = [];
+
+    if (urgentIssueCount > 0) attentionReasons.push('urgent_issue_present');
+    if (metadataIncompleteCount > 0) attentionReasons.push('metadata_incomplete');
+    if (!contract?.releasePlanIds.includes(planId)) attentionReasons.push('contract_plan_not_release_ready');
+
+    return {
+      sourceApp,
+      appName: String(row?.app_name ?? contract?.appName ?? sourceApp),
+      planId,
+      releaseReady: Boolean(contract?.releaseReady && contract.releasePlanIds.includes(planId)),
+      intakeObserved: conversationCount > 0,
+      conversationCount,
+      analysisCount: Number(row?.analysis_count ?? 0),
+      issueCount: Number(row?.issue_count ?? 0),
+      urgentIssueCount,
+      metadataIncompleteCount,
+      freePlanLimitQuestionCount: Number(row?.free_plan_limit_question_count ?? 0),
+      proUpgradeIssueCount: Number(row?.pro_upgrade_issue_count ?? 0),
+      billingIssueCount: Number(row?.billing_issue_count ?? 0),
+      dataLossIssueCount: Number(row?.data_loss_issue_count ?? 0),
+      lastConversationAt: row?.last_conversation_at ?? null,
+      needsAttention: attentionReasons.length > 0,
+      attentionReasons,
+      contract: {
+        uiOwner: contract?.uiOwner ?? 'source-app',
+        processingOwner: contract?.processingOwner ?? 'feedback-hub',
+        aiProvider: contract?.aiProvider ?? 'ai-platform-core',
+        bugReportsRateLimitedByPlan: contract?.bugReportsRateLimitedByPlan ?? false,
+        requiredFields: contract?.requiredFields ?? [...RELEASE_CONTEXT_FIELDS, 'initialMessage'],
+      },
+    };
+  }));
+
+  return {
+    releaseScope: {
+      sourceApps: releaseSourceApps,
+      planIds: releasePlanIds,
+      requiredContextFields: [...RELEASE_CONTEXT_FIELDS],
+    },
+    totals: {
+      conversations: segments.reduce((sum, segment) => sum + segment.conversationCount, 0),
+      analyses: segments.reduce((sum, segment) => sum + segment.analysisCount, 0),
+      issues: segments.reduce((sum, segment) => sum + segment.issueCount, 0),
+      urgentIssues: segments.reduce((sum, segment) => sum + segment.urgentIssueCount, 0),
+      metadataIncompleteConversations: segments.reduce((sum, segment) => sum + segment.metadataIncompleteCount, 0),
+      segmentsNeedingAttention: segments.filter((segment) => segment.needsAttention).length,
+    },
+    segments,
+    safeguards: {
+      sourceAppUiOwner: 'source-app',
+      processingOwner: 'feedback-hub',
+      aiProvider: 'ai-platform-core',
+      bugReportsRateLimitedByPlan: false,
+      paymentDetailsStoredInBody: false,
+      secretValuesStoredInBody: false,
+    },
+    filters: {
+      since: query.since ?? null,
+    },
     generatedAt: nowIso(),
   };
 }

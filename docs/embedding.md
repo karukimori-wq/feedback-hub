@@ -176,6 +176,12 @@ GET /api/admin/app-summary?limit=10
 
 Feedback Hub admins can use this endpoint to confirm which source apps are sending feedback and whether any app is generating urgent Issues or follow-up demand.
 
+```http
+GET /api/admin/release-intake-summary
+```
+
+Use this release-focused endpoint when confirming Numeria Studio and Velvet Free / Pro launch traffic. It returns all four source app and plan segments, even before traffic exists, so Platform Admin can show a stable launch checklist.
+
 Important response fields:
 
 - `conversation_count`: Feedback conversations received from the app.
@@ -185,6 +191,9 @@ Important response fields:
 - `urgent_issue_count`: Open critical or repeated Issues linked from the app.
 - `follow_up_analysis_count`: Analyses where AI requested more detail.
 - `embedConfig`: The current question box contract for that app.
+- `releaseIntakeSummary.segments[]`: Release app and plan observations for `numeria-studio/free`, `numeria-studio/pro`, `velvet/free`, and `velvet/pro`.
+- `releaseIntakeSummary.segments[].attentionReasons`: Flags such as `urgent_issue_present` or `metadata_incomplete`.
+- `releaseIntakeSummary.safeguards`: Confirms source-app-owned UI, Feedback Hub processing, AI Platform Core analysis, and no body storage for payment details or secrets.
 
 ## Response Handling
 

@@ -109,6 +109,8 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns metadata completeness for automatically collected conversation context such as app version, route, screen, device, browser, and occurred time.
 - `GET /api/admin/rankings`
   - Returns Bug TOP10, request TOP20, and question TOP20 rankings for admin dashboard sections.
+- `GET /api/admin/release-intake-summary`
+  - Returns Numeria Studio and Velvet Free / Pro intake observations by source app and plan, including urgent Issues, Free limit questions, Pro upgrade issues, metadata completeness, and contract safeguards.
 - `GET /api/admin/release-readiness`
   - Returns the Numeria Studio and Velvet Free / Pro release readiness checks for AI Platform Core configuration, D1 release columns, required intake context, redaction, urgent notifications, and grouping safeguards.
 - `GET /api/admin/release-smoke-plan`
@@ -150,7 +152,7 @@ npm run deploy
 FEEDBACK_HUB_WORKER_URL=https://your-worker.example npm run smoke:release-intake
 ```
 
-The release smoke script checks health, contracts, release readiness, External Intelligence snapshot readiness, app/plan metrics, Numeria Studio Free intake, and Velvet Pro embed intake.
+The release smoke script checks health, contracts, release readiness, External Intelligence snapshot readiness, source app contracts, release intake summary, app/plan metrics, Numeria Studio Free intake, and Velvet Pro embed intake.
 
 GitHub Actions production deployment is available through the `Cloudflare Production` workflow. Required repository secrets:
 
@@ -189,6 +191,8 @@ Admin release smoke plan filters: none.
 Admin External Intelligence snapshot filters: none.
 
 Admin source app contracts filters: none.
+
+Admin release intake summary filters: `since`.
 
 Admin status activity filters: `issueId`, `nextStatus`, `since`, and `limit`.
 

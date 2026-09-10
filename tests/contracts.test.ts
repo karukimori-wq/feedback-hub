@@ -48,6 +48,7 @@ describe('contract endpoints', () => {
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'release_readiness', method: 'GET', path: '/api/admin/release-readiness' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'external_intelligence_snapshot', method: 'GET', path: '/api/admin/external-intelligence-snapshot' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'source_app_contracts', method: 'GET', path: '/api/admin/source-app-contracts' });
+    expect(body.releaseSmoke.checks).toContainEqual({ key: 'release_intake_summary', method: 'GET', path: '/api/admin/release-intake-summary' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' });
     expect(body.owns).toContain('Feedback AI Analysis');
     expect(body.doesNotOwn).toContain('Engineering task management');
@@ -75,6 +76,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/admin/issue-briefs');
     expect(body.endpoints).toContain('GET /api/admin/metadata-quality');
     expect(body.endpoints).toContain('GET /api/admin/rankings');
+    expect(body.endpoints).toContain('GET /api/admin/release-intake-summary');
     expect(body.endpoints).toContain('GET /api/admin/release-readiness');
     expect(body.endpoints).toContain('GET /api/admin/release-smoke-plan');
     expect(body.endpoints).toContain('GET /api/admin/external-intelligence-snapshot');
@@ -170,6 +172,7 @@ describe('contract endpoints', () => {
     expect(body.smokePlan.command).toContain('smoke:release-intake');
     expect(body.smokePlan.checks).toContainEqual({ key: 'external_intelligence_snapshot', method: 'GET', path: '/api/admin/external-intelligence-snapshot' });
     expect(body.smokePlan.checks).toContainEqual({ key: 'source_app_contracts', method: 'GET', path: '/api/admin/source-app-contracts' });
+    expect(body.smokePlan.checks).toContainEqual({ key: 'release_intake_summary', method: 'GET', path: '/api/admin/release-intake-summary' });
     expect(body.smokePlan.checks).toContainEqual({ key: 'numeria_free_intake', method: 'POST', path: '/api/feedback/intake' });
     expect(body.smokePlan.samplePayloads.numeriaStudioFree.appId).toBe('numeria-studio');
     expect(body.smokePlan.samplePayloads.numeriaStudioFree.planId).toBe('free');
@@ -222,7 +225,7 @@ describe('contract endpoints', () => {
         handoffTargets: {
           externalIntelligenceSystem: { recommendedIngestEndpoint: string };
           professionalPlatformContracts: { contractEndpoint: string; handoffEndpoint: string; sourceAppContractsEndpoint: string };
-          platformAdmin: { readinessEndpoint: string; smokePlanEndpoint: string; sourceAppContractsEndpoint: string };
+          platformAdmin: { readinessEndpoint: string; smokePlanEndpoint: string; sourceAppContractsEndpoint: string; releaseIntakeSummaryEndpoint: string };
         };
       };
     };
@@ -266,6 +269,7 @@ describe('contract endpoints', () => {
     expect(body.snapshot.handoffTargets.platformAdmin.readinessEndpoint).toBe('/api/admin/release-readiness');
     expect(body.snapshot.handoffTargets.platformAdmin.smokePlanEndpoint).toBe('/api/admin/release-smoke-plan');
     expect(body.snapshot.handoffTargets.platformAdmin.sourceAppContractsEndpoint).toBe('/api/admin/source-app-contracts');
+    expect(body.snapshot.handoffTargets.platformAdmin.releaseIntakeSummaryEndpoint).toBe('/api/admin/release-intake-summary');
   });
 
   it('returns source app contracts for release app handoff', async () => {
@@ -337,6 +341,102 @@ describe('contract endpoints', () => {
     expect(velvet?.sourceApp).toBe('velvet');
     expect(velvet?.releaseReady).toBe(true);
     expect(velvet?.releasePlanIds).toEqual(['free', 'pro']);
+  });
+
+  it('returns release intake summary by app and plan', async () => {
+    const response = await app.request('/api/admin/release-intake-summary?since=2026-09-10T00:00:00.000Z', {}, {
+      ...env,
+      DB: d1WithReleaseIntakeSummaryRows([
+        {
+          source_app: 'numeria-studio',
+          app_name: 'Numeria Studio',
+          plan_id: 'free',
+          conversation_count: 3,
+          analysis_count: 3,
+          issue_count: 2,
+          urgent_issue_count: 1,
+          free_plan_limit_question_count: 2,
+          pro_upgrade_issue_count: 0,
+          billing_issue_count: 0,
+          data_loss_issue_count: 1,
+          metadata_incomplete_count: 1,
+          last_conversation_at: '2026-09-10T01:00:00.000Z',
+        },
+        {
+          source_app: 'velvet',
+          app_name: 'Velvet',
+          plan_id: 'pro',
+          conversation_count: 1,
+          analysis_count: 1,
+          issue_count: 1,
+          urgent_issue_count: 0,
+          free_plan_limit_question_count: 0,
+          pro_upgrade_issue_count: 1,
+          billing_issue_count: 0,
+          data_loss_issue_count: 0,
+          metadata_incomplete_count: 0,
+          last_conversation_at: '2026-09-10T02:00:00.000Z',
+        },
+      ]),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      releaseIntakeSummary: {
+        releaseScope: { sourceApps: string[]; planIds: string[]; requiredContextFields: string[] };
+        totals: { conversations: number; urgentIssues: number; metadataIncompleteConversations: number; segmentsNeedingAttention: number };
+        segments: Array<{
+          sourceApp: string;
+          planId: string;
+          releaseReady: boolean;
+          intakeObserved: boolean;
+          conversationCount: number;
+          urgentIssueCount: number;
+          metadataIncompleteCount: number;
+          freePlanLimitQuestionCount: number;
+          proUpgradeIssueCount: number;
+          needsAttention: boolean;
+          attentionReasons: string[];
+          contract: { uiOwner: string; processingOwner: string; aiProvider: string; bugReportsRateLimitedByPlan: boolean; requiredFields: string[] };
+        }>;
+        safeguards: { sourceAppUiOwner: string; aiProvider: string; paymentDetailsStoredInBody: boolean; secretValuesStoredInBody: boolean };
+        filters: { since: string | null };
+      };
+    };
+
+    expect(body.releaseIntakeSummary.releaseScope.sourceApps).toEqual(['numeria-studio', 'velvet']);
+    expect(body.releaseIntakeSummary.releaseScope.planIds).toEqual(['free', 'pro']);
+    expect(body.releaseIntakeSummary.releaseScope.requiredContextFields).toContain('correlationId');
+    expect(body.releaseIntakeSummary.totals.conversations).toBe(4);
+    expect(body.releaseIntakeSummary.totals.urgentIssues).toBe(1);
+    expect(body.releaseIntakeSummary.totals.metadataIncompleteConversations).toBe(1);
+    expect(body.releaseIntakeSummary.totals.segmentsNeedingAttention).toBe(1);
+    expect(body.releaseIntakeSummary.segments).toHaveLength(4);
+
+    const numeriaFree = body.releaseIntakeSummary.segments.find((segment) => segment.sourceApp === 'numeria-studio' && segment.planId === 'free');
+    const numeriaPro = body.releaseIntakeSummary.segments.find((segment) => segment.sourceApp === 'numeria-studio' && segment.planId === 'pro');
+    const velvetPro = body.releaseIntakeSummary.segments.find((segment) => segment.sourceApp === 'velvet' && segment.planId === 'pro');
+    expect(numeriaFree?.releaseReady).toBe(true);
+    expect(numeriaFree?.intakeObserved).toBe(true);
+    expect(numeriaFree?.conversationCount).toBe(3);
+    expect(numeriaFree?.urgentIssueCount).toBe(1);
+    expect(numeriaFree?.metadataIncompleteCount).toBe(1);
+    expect(numeriaFree?.freePlanLimitQuestionCount).toBe(2);
+    expect(numeriaFree?.needsAttention).toBe(true);
+    expect(numeriaFree?.attentionReasons).toEqual(['urgent_issue_present', 'metadata_incomplete']);
+    expect(numeriaFree?.contract.uiOwner).toBe('source-app');
+    expect(numeriaFree?.contract.processingOwner).toBe('feedback-hub');
+    expect(numeriaFree?.contract.aiProvider).toBe('ai-platform-core');
+    expect(numeriaFree?.contract.bugReportsRateLimitedByPlan).toBe(false);
+    expect(numeriaFree?.contract.requiredFields).toContain('initialMessage');
+    expect(numeriaPro?.intakeObserved).toBe(false);
+    expect(numeriaPro?.conversationCount).toBe(0);
+    expect(velvetPro?.proUpgradeIssueCount).toBe(1);
+    expect(body.releaseIntakeSummary.safeguards.sourceAppUiOwner).toBe('source-app');
+    expect(body.releaseIntakeSummary.safeguards.aiProvider).toBe('ai-platform-core');
+    expect(body.releaseIntakeSummary.safeguards.paymentDetailsStoredInBody).toBe(false);
+    expect(body.releaseIntakeSummary.safeguards.secretValuesStoredInBody).toBe(false);
+    expect(body.releaseIntakeSummary.filters.since).toBe('2026-09-10T00:00:00.000Z');
   });
 
   it('returns CORS preflight headers', async () => {
@@ -611,6 +711,15 @@ describe('contract endpoints', () => {
     expect(body.errorCode).toBe('VALIDATION_ERROR');
   });
 
+  it('validates release intake summary date filters before persistence', async () => {
+    const response = await app.request('/api/admin/release-intake-summary?since=today', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
   it('validates admin issue brief limits before persistence', async () => {
     const response = await app.request('/api/admin/issue-briefs?limit=500', {}, env);
 
@@ -697,6 +806,16 @@ function d1WithConversationColumns(columns: string[]) {
     prepare: () => ({
       all: async () => ({
         results: columns.map((name) => ({ name })),
+      }),
+    }),
+  } as unknown as D1Database;
+}
+
+function d1WithReleaseIntakeSummaryRows(rows: Array<Record<string, unknown>>) {
+  return {
+    prepare: () => ({
+      bind: () => ({
+        all: async () => ({ results: rows }),
       }),
     }),
   } as unknown as D1Database;

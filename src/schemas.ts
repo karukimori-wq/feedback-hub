@@ -92,6 +92,10 @@ export const adminMetadataQualityQuerySchema = z.object({
   since: z.string().datetime().optional(),
 });
 
+export const adminReleaseIntakeSummaryQuerySchema = z.object({
+  since: z.string().datetime().optional(),
+});
+
 export const adminStatusActivityQuerySchema = z.object({
   issueId: z.string().min(1).optional(),
   nextStatus: z.enum(['open', 'triaged', 'accepted', 'resolved', 'closed']).optional(),
@@ -156,6 +160,7 @@ export type ListConversationsQuery = z.infer<typeof listConversationsQuerySchema
 export type AdminInboxQuery = z.infer<typeof adminInboxQuerySchema>;
 export type AdminIntakeMetricsQuery = z.infer<typeof adminIntakeMetricsQuerySchema>;
 export type AdminMetadataQualityQuery = z.infer<typeof adminMetadataQualityQuerySchema>;
+export type AdminReleaseIntakeSummaryQuery = z.infer<typeof adminReleaseIntakeSummaryQuerySchema>;
 export type AdminRankingsQuery = z.infer<typeof adminRankingsQuerySchema>;
 export type AdminStatusActivityQuery = z.infer<typeof adminStatusActivityQuerySchema>;
 export type AdminTriageQueueQuery = z.infer<typeof adminTriageQueueQuerySchema>;
