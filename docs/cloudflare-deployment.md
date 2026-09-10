@@ -110,7 +110,7 @@ For the release intake smoke path, run:
 FEEDBACK_HUB_WORKER_URL="$WORKER_URL" npm run smoke:release-intake
 ```
 
-This checks health, contract status, release readiness, Numeria Studio Free intake, and Velvet Pro intake without sending payment details or secret values.
+This checks health, contract status, release readiness, External Intelligence snapshot readiness, Numeria Studio Free intake, and Velvet Pro intake without sending payment details or secret values.
 
 ```bash
 curl "$WORKER_URL/health"

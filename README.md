@@ -148,6 +148,8 @@ npm run deploy
 FEEDBACK_HUB_WORKER_URL=https://your-worker.example npm run smoke:release-intake
 ```
 
+The release smoke script checks health, contracts, release readiness, External Intelligence snapshot readiness, app/plan metrics, Numeria Studio Free intake, and Velvet Pro embed intake.
+
 GitHub Actions production deployment is available through the `Cloudflare Production` workflow. Required repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`

@@ -32,6 +32,17 @@ await checkJson('GET /api/admin/release-readiness', '/api/admin/release-readines
     && body.readiness?.releaseScope?.sourceApps?.includes('numeria-studio')
     && body.readiness?.releaseScope?.sourceApps?.includes('velvet'),
 });
+await checkJson('GET /api/admin/external-intelligence-snapshot', '/api/admin/external-intelligence-snapshot', {
+  method: 'GET',
+  expect: (body) => body.status === 'success'
+    && body.snapshot?.snapshotVersion === 'feedback-hub.external-intelligence.v1'
+    && body.snapshot?.responsibilityBoundary?.sourceAppUiOwner === 'source-app'
+    && body.snapshot?.aiProcessing?.provider === 'ai-platform-core'
+    && body.snapshot?.releaseScope?.sourceApps?.includes('numeria-studio')
+    && body.snapshot?.releaseScope?.sourceApps?.includes('velvet')
+    && body.snapshot?.intakeContract?.sensitiveBodyRules?.storePaymentDetails === false
+    && body.snapshot?.intakeContract?.sensitiveBodyRules?.storeSecretValues === false,
+});
 await checkJson('GET /api/admin/intake-metrics numeria free', '/api/admin/intake-metrics?sourceApp=numeria-studio&planId=free', {
   method: 'GET',
   expect: (body) => body.status === 'success' && body.metrics?.filters?.sourceApp === 'numeria-studio' && body.metrics?.filters?.planId === 'free',

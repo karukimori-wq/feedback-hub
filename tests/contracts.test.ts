@@ -46,6 +46,7 @@ describe('contract endpoints', () => {
     expect(body.sensitiveBodyRedaction).toBe(true);
     expect(body.releaseSmoke.command).toContain('smoke:release-intake');
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'release_readiness', method: 'GET', path: '/api/admin/release-readiness' });
+    expect(body.releaseSmoke.checks).toContainEqual({ key: 'external_intelligence_snapshot', method: 'GET', path: '/api/admin/external-intelligence-snapshot' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' });
     expect(body.owns).toContain('Feedback AI Analysis');
     expect(body.doesNotOwn).toContain('Engineering task management');
@@ -165,6 +166,7 @@ describe('contract endpoints', () => {
     expect(body.smokePlan.sourceApps).toEqual(['numeria-studio', 'velvet']);
     expect(body.smokePlan.planIds).toEqual(['free', 'pro']);
     expect(body.smokePlan.command).toContain('smoke:release-intake');
+    expect(body.smokePlan.checks).toContainEqual({ key: 'external_intelligence_snapshot', method: 'GET', path: '/api/admin/external-intelligence-snapshot' });
     expect(body.smokePlan.checks).toContainEqual({ key: 'numeria_free_intake', method: 'POST', path: '/api/feedback/intake' });
     expect(body.smokePlan.samplePayloads.numeriaStudioFree.appId).toBe('numeria-studio');
     expect(body.smokePlan.samplePayloads.numeriaStudioFree.planId).toBe('free');
