@@ -115,6 +115,8 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns the scripted release smoke check list, safe sample payload expectations, and body handling rules for Platform Admin or external contract checks.
 - `GET /api/admin/external-intelligence-snapshot`
   - Returns a compact machine-readable handoff snapshot for External Intelligence System, professional-platform-contracts, and Platform Admin. It summarizes Feedback Hub's role, ownership boundaries, Free / Pro release scope, intake contract, AI Platform Core usage, grouping, priority signals, and safe body handling rules.
+- `GET /api/admin/source-app-contracts`
+  - Returns machine-readable question box integration contracts for each supported source app. Numeria Studio and Velvet are marked as Free / Pro release-ready apps, with source-app-owned UI, Feedback Hub processing, AI Platform Core analysis, required fields, endpoints, and body safety rules.
 - `GET /api/admin/status-activity`
   - Returns recent Issue status transitions enriched with canonical Issue context for admin activity views.
 - `GET /api/admin/issue-summary`
@@ -185,6 +187,8 @@ Admin ranking filters: `status`, `bugLimit`, `requestLimit`, and `questionLimit`
 Admin release smoke plan filters: none.
 
 Admin External Intelligence snapshot filters: none.
+
+Admin source app contracts filters: none.
 
 Admin status activity filters: `issueId`, `nextStatus`, `since`, and `limit`.
 

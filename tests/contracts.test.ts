@@ -47,6 +47,7 @@ describe('contract endpoints', () => {
     expect(body.releaseSmoke.command).toContain('smoke:release-intake');
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'release_readiness', method: 'GET', path: '/api/admin/release-readiness' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'external_intelligence_snapshot', method: 'GET', path: '/api/admin/external-intelligence-snapshot' });
+    expect(body.releaseSmoke.checks).toContainEqual({ key: 'source_app_contracts', method: 'GET', path: '/api/admin/source-app-contracts' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' });
     expect(body.owns).toContain('Feedback AI Analysis');
     expect(body.doesNotOwn).toContain('Engineering task management');
@@ -77,6 +78,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/admin/release-readiness');
     expect(body.endpoints).toContain('GET /api/admin/release-smoke-plan');
     expect(body.endpoints).toContain('GET /api/admin/external-intelligence-snapshot');
+    expect(body.endpoints).toContain('GET /api/admin/source-app-contracts');
     expect(body.endpoints).toContain('GET /api/admin/status-activity');
     expect(body.endpoints).toContain('GET /api/admin/issue-summary');
     expect(body.endpoints).toContain('GET /api/admin/triage-queue');
@@ -167,6 +169,7 @@ describe('contract endpoints', () => {
     expect(body.smokePlan.planIds).toEqual(['free', 'pro']);
     expect(body.smokePlan.command).toContain('smoke:release-intake');
     expect(body.smokePlan.checks).toContainEqual({ key: 'external_intelligence_snapshot', method: 'GET', path: '/api/admin/external-intelligence-snapshot' });
+    expect(body.smokePlan.checks).toContainEqual({ key: 'source_app_contracts', method: 'GET', path: '/api/admin/source-app-contracts' });
     expect(body.smokePlan.checks).toContainEqual({ key: 'numeria_free_intake', method: 'POST', path: '/api/feedback/intake' });
     expect(body.smokePlan.samplePayloads.numeriaStudioFree.appId).toBe('numeria-studio');
     expect(body.smokePlan.samplePayloads.numeriaStudioFree.planId).toBe('free');
@@ -218,8 +221,8 @@ describe('contract endpoints', () => {
         adminSignals: { urgentNotificationRules: string[]; aggregations: string[] };
         handoffTargets: {
           externalIntelligenceSystem: { recommendedIngestEndpoint: string };
-          professionalPlatformContracts: { contractEndpoint: string; handoffEndpoint: string };
-          platformAdmin: { readinessEndpoint: string; smokePlanEndpoint: string };
+          professionalPlatformContracts: { contractEndpoint: string; handoffEndpoint: string; sourceAppContractsEndpoint: string };
+          platformAdmin: { readinessEndpoint: string; smokePlanEndpoint: string; sourceAppContractsEndpoint: string };
         };
       };
     };
@@ -259,8 +262,81 @@ describe('contract endpoints', () => {
     expect(body.snapshot.handoffTargets.externalIntelligenceSystem.recommendedIngestEndpoint).toBe('/api/admin/external-intelligence-snapshot');
     expect(body.snapshot.handoffTargets.professionalPlatformContracts.contractEndpoint).toBe('/contracts/status');
     expect(body.snapshot.handoffTargets.professionalPlatformContracts.handoffEndpoint).toBe('/api/admin/external-intelligence-snapshot');
+    expect(body.snapshot.handoffTargets.professionalPlatformContracts.sourceAppContractsEndpoint).toBe('/api/admin/source-app-contracts');
     expect(body.snapshot.handoffTargets.platformAdmin.readinessEndpoint).toBe('/api/admin/release-readiness');
     expect(body.snapshot.handoffTargets.platformAdmin.smokePlanEndpoint).toBe('/api/admin/release-smoke-plan');
+    expect(body.snapshot.handoffTargets.platformAdmin.sourceAppContractsEndpoint).toBe('/api/admin/source-app-contracts');
+  });
+
+  it('returns source app contracts for release app handoff', async () => {
+    const response = await app.request('/api/admin/source-app-contracts', {}, env);
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      sourceAppContracts: {
+        releaseReadySourceApps: string[];
+        supportedSourceApps: string[];
+        contracts: Array<{
+          appId: string;
+          appName: string;
+          sourceApp: string;
+          releaseReady: boolean;
+          entryLabel: string;
+          uiOwner: string;
+          processingOwner: string;
+          aiProvider: string;
+          knowledgeScope: string;
+          endpoints: { config: string; intake: string; followUpTemplate: string; conversationTemplate: string };
+          requiredFields: string[];
+          autoContextFields: string[];
+          acceptedPlanIds: string[];
+          releasePlanIds: string[];
+          bugReportsRateLimitedByPlan: boolean;
+          supportedCategories: string[];
+          responseModes: string[];
+          bodyRules: {
+            sendPaymentDetails: boolean;
+            sendSecretValues: boolean;
+            redactedBeforePersistence: boolean;
+            rawVoicePreservedAfterRedaction: boolean;
+          };
+        }>;
+      };
+    };
+    expect(body.sourceAppContracts.releaseReadySourceApps).toEqual(['numeria-studio', 'velvet']);
+    expect(body.sourceAppContracts.supportedSourceApps).toContain('growth-engine');
+
+    const numeria = body.sourceAppContracts.contracts.find((contract) => contract.appId === 'numeria-studio');
+    const velvet = body.sourceAppContracts.contracts.find((contract) => contract.appId === 'velvet');
+    expect(numeria).toBeDefined();
+    expect(velvet).toBeDefined();
+    expect(numeria?.appName).toBe('Numeria Studio');
+    expect(numeria?.sourceApp).toBe('numeria-studio');
+    expect(numeria?.releaseReady).toBe(true);
+    expect(numeria?.entryLabel).toBe('質問・改善');
+    expect(numeria?.uiOwner).toBe('source-app');
+    expect(numeria?.processingOwner).toBe('feedback-hub');
+    expect(numeria?.aiProvider).toBe('ai-platform-core');
+    expect(numeria?.knowledgeScope).toBe('numeria-studio');
+    expect(numeria?.endpoints.config).toBe('/api/embed/config?appId=numeria-studio');
+    expect(numeria?.endpoints.intake).toBe('/api/embed/feedback');
+    expect(numeria?.requiredFields).toContain('initialMessage');
+    expect(numeria?.requiredFields).toContain('correlationId');
+    expect(numeria?.autoContextFields).toContain('browser');
+    expect(numeria?.acceptedPlanIds).toEqual(['free', 'pro', 'business']);
+    expect(numeria?.releasePlanIds).toEqual(['free', 'pro']);
+    expect(numeria?.bugReportsRateLimitedByPlan).toBe(false);
+    expect(numeria?.supportedCategories).toContain('Bug');
+    expect(numeria?.responseModes).toContain('ask_follow_up');
+    expect(numeria?.bodyRules.sendPaymentDetails).toBe(false);
+    expect(numeria?.bodyRules.sendSecretValues).toBe(false);
+    expect(numeria?.bodyRules.redactedBeforePersistence).toBe(true);
+    expect(numeria?.bodyRules.rawVoicePreservedAfterRedaction).toBe(true);
+
+    expect(velvet?.appName).toBe('Velvet');
+    expect(velvet?.sourceApp).toBe('velvet');
+    expect(velvet?.releaseReady).toBe(true);
+    expect(velvet?.releasePlanIds).toEqual(['free', 'pro']);
   });
 
   it('returns CORS preflight headers', async () => {

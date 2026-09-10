@@ -1,5 +1,5 @@
 import { analyzeWithAiPlatformCore, type AiPlatformCoreEnv } from './ai-platform-core';
-import { ACCEPTED_PLAN_IDS, RELEASE_CONTEXT_FIELDS, RELEASE_READY_SOURCE_APPS, analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
+import { ACCEPTED_PLAN_IDS, RELEASE_CONTEXT_FIELDS, RELEASE_READY_SOURCE_APPS, SUPPORTED_SOURCE_APPS, analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
 import { newId, nowIso } from './ids';
 import type {
   AdminActionBoardQuery,
@@ -86,6 +86,52 @@ export function getEmbedConfig(query: EmbedConfigQuery) {
     responseModes: ['show_received', 'ask_follow_up'],
     rawVoicePreserved: true,
     generatedAt: nowIso(),
+  };
+}
+
+export function getSourceAppContracts() {
+  const generatedAt = nowIso();
+  const contracts = SUPPORTED_SOURCE_APPS.map((appId) => {
+    const config = getEmbedConfig({ appId });
+    const releaseReady = RELEASE_READY_SOURCE_APPS.includes(config.appId as typeof RELEASE_READY_SOURCE_APPS[number]);
+    return {
+      appId: config.appId,
+      appName: config.appName,
+      sourceApp: config.appId,
+      releaseReady,
+      entryLabel: config.entryLabel,
+      uiOwner: config.uiOwner,
+      processingOwner: config.processingOwner,
+      aiProvider: config.aiProvider,
+      knowledgeScope: config.knowledgeScope,
+      endpoints: {
+        config: `/api/embed/config?appId=${config.appId}`,
+        intake: config.intakeEndpoint,
+        compatibleIntake: config.compatibleIntakeEndpoint,
+        followUpTemplate: config.followUpEndpointTemplate,
+        conversationTemplate: config.conversationEndpointTemplate,
+      },
+      requiredFields: config.requiredFields,
+      autoContextFields: config.autoContextFields,
+      acceptedPlanIds: config.acceptedPlanIds,
+      releasePlanIds: releaseReady ? ['free', 'pro'] : [],
+      bugReportsRateLimitedByPlan: config.bugReportsRateLimitedByPlan,
+      supportedCategories: config.supportedCategories,
+      responseModes: config.responseModes,
+      bodyRules: {
+        sendPaymentDetails: false,
+        sendSecretValues: false,
+        redactedBeforePersistence: true,
+        rawVoicePreservedAfterRedaction: config.rawVoicePreserved,
+      },
+    };
+  });
+
+  return {
+    releaseReadySourceApps: [...RELEASE_READY_SOURCE_APPS],
+    supportedSourceApps: [...SUPPORTED_SOURCE_APPS],
+    contracts,
+    generatedAt,
   };
 }
 

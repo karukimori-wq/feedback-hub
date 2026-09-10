@@ -29,6 +29,7 @@ import {
   getPersistenceStatus,
   getRankedIssues,
   getRequestRankings,
+  getSourceAppContracts,
   getUrgentNotificationSummary,
   listConversations,
   listIssues,
@@ -127,6 +128,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/release-readiness',
     'GET /api/admin/release-smoke-plan',
     'GET /api/admin/external-intelligence-snapshot',
+    'GET /api/admin/source-app-contracts',
     'GET /api/admin/status-activity',
     'GET /api/admin/issue-summary',
     'GET /api/admin/triage-queue',
@@ -472,14 +474,21 @@ app.get('/api/admin/external-intelligence-snapshot', (c) => c.json({
       professionalPlatformContracts: {
         contractEndpoint: '/contracts/status',
         handoffEndpoint: '/api/admin/external-intelligence-snapshot',
+        sourceAppContractsEndpoint: '/api/admin/source-app-contracts',
       },
       platformAdmin: {
         readinessEndpoint: '/api/admin/release-readiness',
         smokePlanEndpoint: '/api/admin/release-smoke-plan',
+        sourceAppContractsEndpoint: '/api/admin/source-app-contracts',
       },
     },
     generatedAt: new Date().toISOString(),
   },
+}));
+
+app.get('/api/admin/source-app-contracts', (c) => c.json({
+  status: 'success',
+  sourceAppContracts: getSourceAppContracts(),
 }));
 
 app.get('/api/admin/status-activity', async (c) => {

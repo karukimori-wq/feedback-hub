@@ -141,6 +141,7 @@ curl "$WORKER_URL/api/admin/rankings"
 curl "$WORKER_URL/api/admin/release-readiness"
 curl "$WORKER_URL/api/admin/release-smoke-plan"
 curl "$WORKER_URL/api/admin/external-intelligence-snapshot"
+curl "$WORKER_URL/api/admin/source-app-contracts"
 curl "$WORKER_URL/api/admin/status-activity?limit=10"
 curl "$WORKER_URL/api/admin/issue-summary"
 curl "$WORKER_URL/api/admin/triage-queue?limit=10"
@@ -225,6 +226,7 @@ Expected results:
 - `/api/admin/release-readiness` returns Numeria Studio and Velvet Free / Pro readiness checks for AI Platform Core configuration, release intake columns, required context, redaction, urgent notifications, and grouping safeguards.
 - `/api/admin/release-smoke-plan` returns the scripted smoke checks, source apps, Free / Pro scope, and safe sample payload rules.
 - `/api/admin/external-intelligence-snapshot` returns a compact handoff snapshot for External Intelligence System, professional-platform-contracts, and Platform Admin.
+- `/api/admin/source-app-contracts` returns source-app-owned question box integration contracts for Numeria Studio, Velvet, and other supported apps.
 - `/api/admin/status-activity?limit=10` returns recent Issue status transitions with canonical Issue context.
 - `/api/admin/issue-summary` returns issue breakdowns by category, status, severity, and impact.
 - `/api/admin/triage-queue?limit=10` returns open Issues sorted by priority with source conversation counts and latest user-message previews.

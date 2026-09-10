@@ -66,6 +66,24 @@ The response tells the source app which label, endpoint, fields, and ownership m
 }
 ```
 
+## Get All Source App Contracts
+
+```http
+GET /api/admin/source-app-contracts
+```
+
+Use this endpoint when another app, Platform Admin, External Intelligence System, or professional-platform-contracts needs the current Feedback Hub integration contract in one response.
+
+Important response fields:
+
+- `releaseReadySourceApps`: Free / Pro launch apps, currently `numeria-studio` and `velvet`.
+- `contracts[].uiOwner`: Always `source-app`; each app renders its own question box UI.
+- `contracts[].processingOwner`: Always `feedback-hub`; Feedback Hub owns intake, AI analysis, grouping, ranking, and admin review outputs.
+- `contracts[].aiProvider`: `ai-platform-core`.
+- `contracts[].requiredFields`: Includes `sourceApp`, `appVersion`, `planId`, `workspaceId`, `userId`, `currentScreen`, `category`, `occurredAt`, `correlationId`, and `initialMessage`.
+- `contracts[].releasePlanIds`: `free` and `pro` for Numeria Studio and Velvet.
+- `contracts[].bodyRules`: Payment details and secret values must not be sent; Feedback Hub redacts before persistence as defense in depth.
+
 ## Send Feedback
 
 ```http
