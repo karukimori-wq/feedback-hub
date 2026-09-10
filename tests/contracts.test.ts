@@ -30,6 +30,8 @@ describe('contract endpoints', () => {
       bugReportsRateLimitedByPlan: boolean;
       sensitiveBodyRedaction: boolean;
       releaseSmoke: { command: string; checks: Array<{ key: string; method: string; path: string }> };
+      owns: string[];
+      doesNotOwn: string[];
       endpoints: string[];
     };
     expect(body.identityMode).toBe('workspaceId+userId');
@@ -45,6 +47,9 @@ describe('contract endpoints', () => {
     expect(body.releaseSmoke.command).toContain('smoke:release-intake');
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'release_readiness', method: 'GET', path: '/api/admin/release-readiness' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' });
+    expect(body.owns).toContain('Feedback AI Analysis');
+    expect(body.doesNotOwn).toContain('Engineering task management');
+    expect(body.doesNotOwn).toContain('Payment');
     expect(body.endpoints).toContain('GET /api/embed/config');
     expect(body.endpoints).toContain('POST /api/embed/feedback');
     expect(body.endpoints).toContain('GET /api/embed/conversations/:conversationId');
@@ -70,6 +75,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/admin/rankings');
     expect(body.endpoints).toContain('GET /api/admin/release-readiness');
     expect(body.endpoints).toContain('GET /api/admin/release-smoke-plan');
+    expect(body.endpoints).toContain('GET /api/admin/external-intelligence-snapshot');
     expect(body.endpoints).toContain('GET /api/admin/status-activity');
     expect(body.endpoints).toContain('GET /api/admin/issue-summary');
     expect(body.endpoints).toContain('GET /api/admin/triage-queue');
@@ -168,6 +174,91 @@ describe('contract endpoints', () => {
     expect(body.smokePlan.bodyRules.includePaymentDetails).toBe(false);
     expect(body.smokePlan.bodyRules.includeSecretValues).toBe(false);
     expect(body.smokePlan.bodyRules.rawVoicePreservedAfterRedaction).toBe(true);
+  });
+
+  it('returns an External Intelligence handoff snapshot', async () => {
+    const response = await app.request('/api/admin/external-intelligence-snapshot', {}, env);
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      snapshot: {
+        appName: string;
+        snapshotVersion: string;
+        sections: string[];
+        identity: { role: string; identityMode: string; professionalIdRequired: boolean };
+        responsibilityBoundary: {
+          owns: string[];
+          doesNotOwn: string[];
+          sourceAppUiOwner: string;
+          processingOwner: string;
+        };
+        releaseScope: {
+          sourceApps: string[];
+          acceptedSourceApps: string[];
+          planIds: string[];
+          futurePlanIds: string[];
+          requiredContextFields: string[];
+          bugReportsRateLimitedByPlan: boolean;
+        };
+        intakeContract: {
+          appOwnedEntryLabel: string;
+          intakeEndpoint: string;
+          sensitiveBodyRules: { redactBeforePersistence: boolean; storePaymentDetails: boolean; storeSecretValues: boolean };
+        };
+        aiProcessing: { provider: string; localAiUsage: string; knowledgeScopeBySourceApp: boolean };
+        analysisOutputs: {
+          conversationModel: string[];
+          categories: string[];
+          grouping: string;
+          priorityFormula: string;
+          rawVoicePreservedAfterRedaction: boolean;
+        };
+        adminSignals: { urgentNotificationRules: string[]; aggregations: string[] };
+        handoffTargets: {
+          externalIntelligenceSystem: { recommendedIngestEndpoint: string };
+          professionalPlatformContracts: { contractEndpoint: string; handoffEndpoint: string };
+          platformAdmin: { readinessEndpoint: string; smokePlanEndpoint: string };
+        };
+      };
+    };
+    expect(body.snapshot.appName).toBe('feedback-hub');
+    expect(body.snapshot.snapshotVersion).toBe('feedback-hub.external-intelligence.v1');
+    expect(body.snapshot.sections).toContain('responsibilityBoundary');
+    expect(body.snapshot.identity.role).toBe('user-voice-intelligence');
+    expect(body.snapshot.identity.identityMode).toBe('workspaceId+userId');
+    expect(body.snapshot.identity.professionalIdRequired).toBe(false);
+    expect(body.snapshot.responsibilityBoundary.owns).toContain('Feedback AI Analysis');
+    expect(body.snapshot.responsibilityBoundary.doesNotOwn).toContain('Question box visual UI');
+    expect(body.snapshot.responsibilityBoundary.doesNotOwn).toContain('Engineering task management');
+    expect(body.snapshot.responsibilityBoundary.doesNotOwn).toContain('Plan billing management');
+    expect(body.snapshot.responsibilityBoundary.sourceAppUiOwner).toBe('source-app');
+    expect(body.snapshot.responsibilityBoundary.processingOwner).toBe('feedback-hub');
+    expect(body.snapshot.releaseScope.sourceApps).toEqual(['numeria-studio', 'velvet']);
+    expect(body.snapshot.releaseScope.acceptedSourceApps).toContain('sns-planner');
+    expect(body.snapshot.releaseScope.planIds).toEqual(['free', 'pro']);
+    expect(body.snapshot.releaseScope.futurePlanIds).toEqual(['business']);
+    expect(body.snapshot.releaseScope.requiredContextFields).toContain('correlationId');
+    expect(body.snapshot.releaseScope.bugReportsRateLimitedByPlan).toBe(false);
+    expect(body.snapshot.intakeContract.appOwnedEntryLabel).toBe('質問・改善');
+    expect(body.snapshot.intakeContract.intakeEndpoint).toBe('/api/embed/feedback');
+    expect(body.snapshot.intakeContract.sensitiveBodyRules.redactBeforePersistence).toBe(true);
+    expect(body.snapshot.intakeContract.sensitiveBodyRules.storePaymentDetails).toBe(false);
+    expect(body.snapshot.intakeContract.sensitiveBodyRules.storeSecretValues).toBe(false);
+    expect(body.snapshot.aiProcessing.provider).toBe('ai-platform-core');
+    expect(body.snapshot.aiProcessing.localAiUsage).toBe('fallback-only');
+    expect(body.snapshot.aiProcessing.knowledgeScopeBySourceApp).toBe(true);
+    expect(body.snapshot.analysisOutputs.conversationModel).toEqual(['Conversation', 'Message', 'AI Analysis', 'Issue']);
+    expect(body.snapshot.analysisOutputs.categories).toContain('Bug');
+    expect(body.snapshot.analysisOutputs.grouping).toBe('similar-feedback-to-canonical-issue');
+    expect(body.snapshot.analysisOutputs.priorityFormula).toBe('severity * count * impact');
+    expect(body.snapshot.analysisOutputs.rawVoicePreservedAfterRedaction).toBe(true);
+    expect(body.snapshot.adminSignals.urgentNotificationRules).toContain('same issue count >= 30');
+    expect(body.snapshot.adminSignals.aggregations).toContain('planId');
+    expect(body.snapshot.handoffTargets.externalIntelligenceSystem.recommendedIngestEndpoint).toBe('/api/admin/external-intelligence-snapshot');
+    expect(body.snapshot.handoffTargets.professionalPlatformContracts.contractEndpoint).toBe('/contracts/status');
+    expect(body.snapshot.handoffTargets.professionalPlatformContracts.handoffEndpoint).toBe('/api/admin/external-intelligence-snapshot');
+    expect(body.snapshot.handoffTargets.platformAdmin.readinessEndpoint).toBe('/api/admin/release-readiness');
+    expect(body.snapshot.handoffTargets.platformAdmin.smokePlanEndpoint).toBe('/api/admin/release-smoke-plan');
   });
 
   it('returns CORS preflight headers', async () => {

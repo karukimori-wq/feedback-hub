@@ -113,6 +113,8 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns the Numeria Studio and Velvet Free / Pro release readiness checks for AI Platform Core configuration, D1 release columns, required intake context, redaction, urgent notifications, and grouping safeguards.
 - `GET /api/admin/release-smoke-plan`
   - Returns the scripted release smoke check list, safe sample payload expectations, and body handling rules for Platform Admin or external contract checks.
+- `GET /api/admin/external-intelligence-snapshot`
+  - Returns a compact machine-readable handoff snapshot for External Intelligence System, professional-platform-contracts, and Platform Admin. It summarizes Feedback Hub's role, ownership boundaries, Free / Pro release scope, intake contract, AI Platform Core usage, grouping, priority signals, and safe body handling rules.
 - `GET /api/admin/status-activity`
   - Returns recent Issue status transitions enriched with canonical Issue context for admin activity views.
 - `GET /api/admin/issue-summary`
@@ -179,6 +181,8 @@ Feedback ranking filters: `status` and `limit`.
 Admin ranking filters: `status`, `bugLimit`, `requestLimit`, and `questionLimit`.
 
 Admin release smoke plan filters: none.
+
+Admin External Intelligence snapshot filters: none.
 
 Admin status activity filters: `issueId`, `nextStatus`, `since`, and `limit`.
 

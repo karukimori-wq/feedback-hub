@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { ACCEPTED_PLAN_IDS, APP_NAME, CONTRACT_VERSION, RELEASE_READY_SOURCE_APPS, RELEASE_SMOKE_CHECKS, SUPPORTED_SOURCE_APPS } from './domain';
+import { ACCEPTED_PLAN_IDS, APP_NAME, CONTRACT_VERSION, EXTERNAL_INTELLIGENCE_SNAPSHOT_SECTIONS, RELEASE_CONTEXT_FIELDS, RELEASE_READY_SOURCE_APPS, RELEASE_SMOKE_CHECKS, SUPPORTED_SOURCE_APPS } from './domain';
 import {
   analyzeConversation,
   createConversation,
@@ -126,6 +126,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/rankings',
     'GET /api/admin/release-readiness',
     'GET /api/admin/release-smoke-plan',
+    'GET /api/admin/external-intelligence-snapshot',
     'GET /api/admin/status-activity',
     'GET /api/admin/issue-summary',
     'GET /api/admin/triage-queue',
@@ -403,6 +404,81 @@ app.get('/api/admin/release-smoke-plan', (c) => c.json({
       includeSecretValues: false,
       rawVoicePreservedAfterRedaction: true,
     },
+  },
+}));
+
+app.get('/api/admin/external-intelligence-snapshot', (c) => c.json({
+  status: 'success',
+  snapshot: {
+    appName: APP_NAME,
+    contractVersion: CONTRACT_VERSION,
+    snapshotVersion: 'feedback-hub.external-intelligence.v1',
+    sections: [...EXTERNAL_INTELLIGENCE_SNAPSHOT_SECTIONS],
+    identity: {
+      role: 'user-voice-intelligence',
+      identityMode: 'workspaceId+userId',
+      professionalIdRequired: false,
+    },
+    responsibilityBoundary: {
+      owns: ['Feedback Conversation', 'Feedback Message', 'Feedback AI Analysis', 'Feedback Issue', 'Feedback Ranking', 'Admin feedback signals'],
+      doesNotOwn: ['Question box visual UI', 'Customer master', 'Reservation', 'Payment', 'Sales / revenue', 'Engineering task management', 'Plan billing management'],
+      sourceAppUiOwner: 'source-app',
+      processingOwner: 'feedback-hub',
+    },
+    releaseScope: {
+      sourceApps: [...RELEASE_READY_SOURCE_APPS],
+      acceptedSourceApps: [...SUPPORTED_SOURCE_APPS],
+      planIds: ['free', 'pro'],
+      futurePlanIds: ['business'],
+      requiredContextFields: [...RELEASE_CONTEXT_FIELDS],
+      bugReportsRateLimitedByPlan: false,
+    },
+    intakeContract: {
+      appOwnedEntryLabel: '質問・改善',
+      intakeEndpoint: '/api/embed/feedback',
+      compatibleIntakeEndpoint: '/api/feedback/intake',
+      followUpEndpointTemplate: '/api/embed/conversations/{conversationId}/messages',
+      conversationEndpointTemplate: '/api/embed/conversations/{conversationId}',
+      requiredMessageField: 'initialMessage',
+      sensitiveBodyRules: {
+        redactBeforePersistence: true,
+        storePaymentDetails: false,
+        storeSecretValues: false,
+      },
+    },
+    aiProcessing: {
+      provider: 'ai-platform-core',
+      localAiUsage: 'fallback-only',
+      knowledgeScopeBySourceApp: true,
+      fallbackPurpose: 'local-development-tests-and-apc-outages',
+    },
+    analysisOutputs: {
+      conversationModel: ['Conversation', 'Message', 'AI Analysis', 'Issue'],
+      categories: ['Question', 'Bug', 'Improvement', 'Feature Request', 'UX Feedback', 'Other'],
+      grouping: 'similar-feedback-to-canonical-issue',
+      priorityFormula: 'severity * count * impact',
+      rawVoicePreservedAfterRedaction: true,
+    },
+    adminSignals: {
+      rankings: ['Bug TOP10', 'Request TOP20', 'Question TOP20'],
+      urgentNotificationRules: ['Critical severity', 'Critical impact', 'same issue count >= 30'],
+      aggregations: ['sourceApp', 'planId', 'category', 'severity', 'impact'],
+    },
+    handoffTargets: {
+      externalIntelligenceSystem: {
+        recommendedIngestEndpoint: '/api/admin/external-intelligence-snapshot',
+        recommendedRefresh: 'before-development-and-after-main-push',
+      },
+      professionalPlatformContracts: {
+        contractEndpoint: '/contracts/status',
+        handoffEndpoint: '/api/admin/external-intelligence-snapshot',
+      },
+      platformAdmin: {
+        readinessEndpoint: '/api/admin/release-readiness',
+        smokePlanEndpoint: '/api/admin/release-smoke-plan',
+      },
+    },
+    generatedAt: new Date().toISOString(),
   },
 }));
 

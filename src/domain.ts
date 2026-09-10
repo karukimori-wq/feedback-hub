@@ -13,6 +13,16 @@ export const RELEASE_SMOKE_CHECKS = [
   { key: 'numeria_free_intake', method: 'POST', path: '/api/feedback/intake' },
   { key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' },
 ] as const;
+export const EXTERNAL_INTELLIGENCE_SNAPSHOT_SECTIONS = [
+  'identity',
+  'responsibilityBoundary',
+  'releaseScope',
+  'intakeContract',
+  'aiProcessing',
+  'analysisOutputs',
+  'adminSignals',
+  'handoffTargets',
+] as const;
 
 export type FeedbackCategory = 'Question' | 'Bug' | 'Improvement' | 'Feature Request' | 'UX Feedback' | 'Other';
 export type Severity = 'Critical' | 'High' | 'Medium' | 'Low';
