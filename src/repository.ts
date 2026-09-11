@@ -396,6 +396,9 @@ export async function createConversation(db: D1Database, input: CreateConversati
 }
 
 export async function createFeedbackIntake(db: D1Database, env: AiPlatformCoreEnv, input: CreateFeedbackIntakeInput) {
+  const duplicate = await getDuplicateFeedbackIntake(db, input);
+  if (duplicate) return duplicate;
+
   const conversation = await createConversation(db, input);
   const analysis = await analyzeConversation(db, conversation.conversationId, env);
   const nextAction = decideIntakeNextAction(analysis.analysis.suggestedQuestions);
@@ -415,6 +418,49 @@ export async function createFeedbackIntake(db: D1Database, env: AiPlatformCoreEn
       urgency: analysis.analysis.severity === 'Critical' || analysis.analysis.impact === 'Critical'
         ? 'urgent_candidate'
         : 'normal',
+    },
+  };
+}
+
+async function getDuplicateFeedbackIntake(db: D1Database, input: CreateFeedbackIntakeInput) {
+  if (!input.correlationId) return null;
+
+  const sourceApp = input.sourceApp ?? input.appId;
+  const row = await db.prepare(`
+    SELECT conversation_id
+    FROM feedback_conversations
+    WHERE correlation_id = ?
+      AND source_app = ?
+      AND workspace_id = ?
+      AND user_id = ?
+    ORDER BY updated_at DESC
+    LIMIT 1
+  `).bind(input.correlationId, sourceApp, input.workspaceId, input.userId).first<{ conversation_id: string }>();
+
+  if (!row) return null;
+
+  const status = await getEmbedConversation(db, row.conversation_id);
+  if (!status) return null;
+
+  const latestAnalysis = status.latestAnalysis;
+  const urgency = latestAnalysis?.severity === 'Critical' || latestAnalysis?.impact === 'Critical'
+    ? 'urgent_candidate'
+    : 'normal';
+
+  return {
+    conversationId: row.conversation_id,
+    messageId: null,
+    analysisId: latestAnalysis?.analysisId ?? null,
+    issue: status.issue,
+    analysis: latestAnalysis,
+    analysisSource: 'existing',
+    fallbackUsed: false,
+    deduplicated: true,
+    intake: {
+      status: 'duplicate_returned',
+      nextAction: status.intake.nextAction,
+      followUpQuestions: status.intake.followUpQuestions,
+      urgency,
     },
   };
 }

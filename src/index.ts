@@ -158,7 +158,8 @@ app.post('/api/persistence/roundtrip', async (c) => c.json({
 app.post('/api/feedback/intake', async (c) => {
   const input = createFeedbackIntakeSchema.parse(await c.req.json());
   const result = await createFeedbackIntake(c.env.DB, c.env, input);
-  return c.json({ status: 'success', ...result }, 201);
+  const statusCode = 'deduplicated' in result && result.deduplicated ? 200 : 201;
+  return c.json({ status: 'success', ...result }, statusCode);
 });
 
 app.get('/api/embed/config', (c) => {
@@ -171,7 +172,8 @@ app.get('/api/embed/config', (c) => {
 app.post('/api/embed/feedback', async (c) => {
   const input = createFeedbackIntakeSchema.parse(await c.req.json());
   const result = await createFeedbackIntake(c.env.DB, c.env, input);
-  return c.json({ status: 'success', ...result }, 201);
+  const statusCode = 'deduplicated' in result && result.deduplicated ? 200 : 201;
+  return c.json({ status: 'success', ...result }, statusCode);
 });
 
 app.get('/api/embed/feedback/status', async (c) => {

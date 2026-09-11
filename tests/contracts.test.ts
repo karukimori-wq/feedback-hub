@@ -751,6 +751,94 @@ describe('contract endpoints', () => {
     expect(body.feedbackStatus.intake.nextAction).toBe('ask_follow_up');
   });
 
+  it('returns an existing embed feedback intake for duplicate correlation id submissions', async () => {
+    const response = await app.request('/api/embed/feedback', {
+      method: 'POST',
+      body: JSON.stringify({
+        appId: 'numeria-studio',
+        sourceApp: 'numeria-studio',
+        appName: 'Numeria Studio',
+        planId: 'free',
+        workspaceId: 'ws_1',
+        userId: 'user_1',
+        currentScreen: '鑑定作成',
+        category: 'Bug',
+        appVersion: '1.0.0',
+        occurredAt: '2026-09-11T00:00:00.000Z',
+        correlationId: 'corr_1',
+        initialMessage: '保存できない',
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    }, {
+      ...env,
+      DB: d1ForEmbedFeedbackStatus({
+        lookup: { conversation_id: 'conv_1' },
+        conversation: {
+          conversation_id: 'conv_1',
+          app_id: 'numeria-studio',
+          source_app: 'numeria-studio',
+          app_name: 'Numeria Studio',
+          plan_id: 'free',
+          workspace_id: 'ws_1',
+          user_id: 'user_1',
+          current_screen: '鑑定作成',
+          correlation_id: 'corr_1',
+          status: 'open',
+        },
+        messages: [
+          { message_id: 'msg_1', conversation_id: 'conv_1', role: 'user', body: '保存できない', created_at: '2026-09-11T00:00:00.000Z' },
+        ],
+        analyses: [
+          {
+            analysis_id: 'ana_1',
+            category: 'Bug',
+            severity: 'Critical',
+            impact: 'Critical',
+            confidence: 0.91,
+            summary: '保存処理で失敗する',
+            normalized_problem: 'save-persistence',
+            suggested_questions_json: '[]',
+            created_at: '2026-09-11T00:00:01.000Z',
+          },
+        ],
+        issueLinks: [
+          {
+            issue_id: 'issue_1',
+            canonical_title: '保存処理の不具合',
+            category: 'Bug',
+            severity: 'Critical',
+            impact: 'Critical',
+            count: 1,
+            priority_score: 100,
+            status: 'open',
+            similarity_score: 1,
+            match_reason: 'new-canonical-issue',
+          },
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      conversationId: string;
+      messageId: string | null;
+      analysisId: string;
+      analysisSource: string;
+      deduplicated: boolean;
+      intake: { status: string; nextAction: string; urgency: string };
+      issue: { issueId: string };
+    };
+    expect(body.conversationId).toBe('conv_1');
+    expect(body.messageId).toBeNull();
+    expect(body.analysisId).toBe('ana_1');
+    expect(body.issue.issueId).toBe('issue_1');
+    expect(body.analysisSource).toBe('existing');
+    expect(body.deduplicated).toBe(true);
+    expect(body.intake.status).toBe('duplicate_returned');
+    expect(body.intake.nextAction).toBe('show_received');
+    expect(body.intake.urgency).toBe('urgent_candidate');
+  });
+
   it('returns not found for missing embed feedback status', async () => {
     const response = await app.request('/api/embed/feedback/status?correlationId=missing', {}, {
       ...env,

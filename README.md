@@ -67,6 +67,7 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns the source-app-owned question box contract for an `appId`.
 - `POST /api/embed/feedback`
   - Receives feedback from each app's own question box UI and runs the same intake flow as `/api/feedback/intake`.
+  - Repeated submissions with the same `correlationId`, `sourceApp`, `workspaceId`, and `userId` return the existing intake as `duplicate_returned` instead of creating another Conversation.
 - `GET /api/embed/feedback/status`
   - Returns an app-friendly feedback status by `correlationId`, with optional `sourceApp`, `workspaceId`, and `userId` filters for source app UI recovery.
 - `GET /api/embed/conversations/:conversationId`

@@ -114,6 +114,8 @@ Content-Type: application/json
 
 `POST /api/embed/feedback` uses the same backend flow as `POST /api/feedback/intake`. It creates a Conversation, stores the first Message, asks AI Platform Core for analysis, links or creates an Issue, and returns the intake decision.
 
+The endpoint is idempotent for source-app retries. When the same `correlationId`, `sourceApp`, `workspaceId`, and `userId` already exist, Feedback Hub returns `200` with `intake.status: "duplicate_returned"` and the existing Conversation, latest analysis, and Issue references. It does not store another user Message or run another AI analysis for that retry.
+
 Do not send payment details, raw card numbers, API keys, tokens, passwords, or secret values in the message body. Feedback Hub also redacts common payment and secret-like values before persistence as a defense-in-depth measure.
 
 ## Release Classification Notes
@@ -135,7 +137,8 @@ Do not send payment details, raw card numbers, API keys, tokens, passwords, or s
 6. If the user answers a follow-up question, post that answer to `/api/embed/conversations/{conversationId}/messages`.
 7. Source app can reload the latest state from `/api/embed/conversations/{conversationId}`.
 8. If the source app loses the temporary `conversationId`, reload by `correlationId` from `/api/embed/feedback/status`.
-9. Otherwise show a received state.
+9. If a retry POST returns `intake.status: "duplicate_returned"`, show the restored received or follow-up state.
+10. Otherwise show a received state.
 
 ## Send Follow-Up Answers
 
