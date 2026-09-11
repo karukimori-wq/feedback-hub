@@ -14,6 +14,7 @@ import {
   getAdminFollowUpQueue,
   getAdminInbox,
   getAdminIntakeMetrics,
+  getAdminIssueEvidence,
   getAdminIssueBriefs,
   getAdminMetadataQuality,
   getAdminOverview,
@@ -39,7 +40,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminActionBoardQuerySchema, adminAppSummaryQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminReleaseIntakeSummaryQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createEmbedConversationMessageSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminActionBoardQuerySchema, adminAppSummaryQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminReleaseIntakeSummaryQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createEmbedConversationMessageSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, issueEvidenceQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -123,6 +124,7 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/follow-up-queue',
     'GET /api/admin/inbox',
     'GET /api/admin/intake-metrics',
+    'GET /api/admin/issues/:issueId/evidence',
     'GET /api/admin/issue-briefs',
     'GET /api/admin/metadata-quality',
     'GET /api/admin/rankings',
@@ -345,6 +347,15 @@ app.get('/api/admin/intake-metrics', async (c) => {
     since: c.req.query('since'),
   });
   return c.json({ status: 'success', metrics: await getAdminIntakeMetrics(c.env.DB, query) });
+});
+
+app.get('/api/admin/issues/:issueId/evidence', async (c) => {
+  const query = issueEvidenceQuerySchema.parse({
+    limit: c.req.query('limit'),
+  });
+  const result = await getAdminIssueEvidence(c.env.DB, c.req.param('issueId'), query);
+  if (!result) return c.json({ status: 'error', errorCode: 'ISSUE_NOT_FOUND' }, 404);
+  return c.json({ status: 'success', evidence: result });
 });
 
 app.get('/api/admin/issue-briefs', async (c) => {

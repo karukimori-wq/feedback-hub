@@ -73,6 +73,7 @@ describe('contract endpoints', () => {
     expect(body.endpoints).toContain('GET /api/admin/follow-up-queue');
     expect(body.endpoints).toContain('GET /api/admin/inbox');
     expect(body.endpoints).toContain('GET /api/admin/intake-metrics');
+    expect(body.endpoints).toContain('GET /api/admin/issues/:issueId/evidence');
     expect(body.endpoints).toContain('GET /api/admin/issue-briefs');
     expect(body.endpoints).toContain('GET /api/admin/metadata-quality');
     expect(body.endpoints).toContain('GET /api/admin/rankings');
@@ -439,6 +440,116 @@ describe('contract endpoints', () => {
     expect(body.releaseIntakeSummary.filters.since).toBe('2026-09-10T00:00:00.000Z');
   });
 
+  it('returns admin issue evidence with original voice and AI reasoning', async () => {
+    const response = await app.request('/api/admin/issues/issue_save/evidence?limit=10', {}, {
+      ...env,
+      DB: d1ForIssueEvidence({
+        issue: {
+          issue_id: 'issue_save',
+          canonical_title: '保存処理の不具合',
+          normalized_problem: 'save-persistence',
+          category: 'Bug',
+          severity: 'Critical',
+          impact: 'Critical',
+          count: 32,
+          priority_score: 1000,
+          priority_components_json: '{"severityWeight":10,"countWeight":10,"impactWeight":10}',
+          status: 'open',
+        },
+        messages: [
+          {
+            issue_link_id: 'link_1',
+            similarity_score: 1,
+            match_reason: 'similar-normalized-problem',
+            conversation_id: 'conv_1',
+            source_app: 'numeria-studio',
+            plan_id: 'free',
+            current_screen: '鑑定作成',
+            correlation_id: 'corr_1',
+            message_id: 'msg_1',
+            role: 'user',
+            body: '保存できない。登録してもデータが残らない',
+          },
+        ],
+        analyses: [
+          {
+            analysis_id: 'ana_1',
+            conversation_id: 'conv_1',
+            category: 'Bug',
+            severity: 'Critical',
+            impact: 'Critical',
+            confidence: 0.91,
+            summary: '保存処理でデータが残らない',
+            normalized_problem: 'save-persistence',
+            suggested_questions_json: '["どの画面で発生しましたか？"]',
+            metadata_json: '{"analysisSource":"ai-platform-core","fallbackUsed":false}',
+            similarity_score: 1,
+            match_reason: 'similar-normalized-problem',
+          },
+        ],
+        appPlans: [
+          { source_app: 'numeria-studio', plan_id: 'free', conversation_count: 1, message_count: 1 },
+        ],
+        statusEvents: [],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      evidence: {
+        issue: {
+          issue_id: string;
+          urgencyReasons: string[];
+          recommendedAction: string;
+          priorityComponents: { severityWeight?: number; countWeight?: number; impactWeight?: number };
+        };
+        evidenceSummary: {
+          sourceConversationCount: number;
+          sourceMessageCount: number;
+          analysisCount: number;
+          shouldNotifyAdmin: boolean;
+          notificationReasons: string[];
+          rawVoicePreservedAfterRedaction: boolean;
+          developmentManagementOwnership: boolean;
+        };
+        analyses: Array<{ suggestedQuestions: string[]; metadata: { analysisSource?: string; fallbackUsed?: boolean } }>;
+        sourceMessages: Array<{ body: string; source_app: string; plan_id: string }>;
+        filters: { limit: number };
+      };
+    };
+
+    expect(body.evidence.issue.issue_id).toBe('issue_save');
+    expect(body.evidence.issue.urgencyReasons).toEqual(['critical_severity', 'critical_impact', 'repeated_feedback_threshold']);
+    expect(body.evidence.issue.recommendedAction).toBe('triage_now');
+    expect(body.evidence.issue.priorityComponents.severityWeight).toBe(10);
+    expect(body.evidence.evidenceSummary.sourceConversationCount).toBe(1);
+    expect(body.evidence.evidenceSummary.sourceMessageCount).toBe(1);
+    expect(body.evidence.evidenceSummary.analysisCount).toBe(1);
+    expect(body.evidence.evidenceSummary.shouldNotifyAdmin).toBe(true);
+    expect(body.evidence.evidenceSummary.notificationReasons).toContain('repeated_feedback_threshold');
+    expect(body.evidence.evidenceSummary.rawVoicePreservedAfterRedaction).toBe(true);
+    expect(body.evidence.evidenceSummary.developmentManagementOwnership).toBe(false);
+    expect(body.evidence.analyses[0].suggestedQuestions).toEqual(['どの画面で発生しましたか？']);
+    expect(body.evidence.analyses[0].metadata.analysisSource).toBe('ai-platform-core');
+    expect(body.evidence.analyses[0].metadata.fallbackUsed).toBe(false);
+    expect(body.evidence.sourceMessages[0].body).toContain('保存できない');
+    expect(body.evidence.sourceMessages[0].source_app).toBe('numeria-studio');
+    expect(body.evidence.sourceMessages[0].plan_id).toBe('free');
+    expect(body.evidence.filters.limit).toBe(10);
+  });
+
+  it('returns not found for missing admin issue evidence', async () => {
+    const response = await app.request('/api/admin/issues/missing/evidence', {}, {
+      ...env,
+      DB: d1ForIssueEvidence({ issue: null, messages: [], analyses: [], appPlans: [], statusEvents: [] }),
+    });
+
+    expect(response.status).toBe(404);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('ISSUE_NOT_FOUND');
+  });
+
   it('returns CORS preflight headers', async () => {
     const response = await app.request('/api/feedback/conversations', { method: 'OPTIONS' }, env);
 
@@ -747,6 +858,15 @@ describe('contract endpoints', () => {
     expect(body.errorCode).toBe('VALIDATION_ERROR');
   });
 
+  it('validates admin issue evidence limits before persistence', async () => {
+    const response = await app.request('/api/admin/issues/issue_test/evidence?limit=500', {}, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
   it('validates admin ranking query limits before persistence', async () => {
     const response = await app.request('/api/admin/rankings?requestLimit=500', {}, env);
 
@@ -816,6 +936,29 @@ function d1WithReleaseIntakeSummaryRows(rows: Array<Record<string, unknown>>) {
     prepare: () => ({
       bind: () => ({
         all: async () => ({ results: rows }),
+      }),
+    }),
+  } as unknown as D1Database;
+}
+
+function d1ForIssueEvidence(data: {
+  issue: Record<string, unknown> | null;
+  messages: Array<Record<string, unknown>>;
+  analyses: Array<Record<string, unknown>>;
+  appPlans: Array<Record<string, unknown>>;
+  statusEvents: Array<Record<string, unknown>>;
+}) {
+  return {
+    prepare: (sql: string) => ({
+      bind: () => ({
+        first: async () => data.issue,
+        all: async () => {
+          if (sql.includes('GROUP BY c.source_app')) return { results: data.appPlans };
+          if (sql.includes('JOIN feedback_messages m')) return { results: data.messages };
+          if (sql.includes('JOIN feedback_ai_analyses a')) return { results: data.analyses };
+          if (sql.includes('feedback_issue_status_events')) return { results: data.statusEvents };
+          return { results: [] };
+        },
       }),
     }),
   } as unknown as D1Database;

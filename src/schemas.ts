@@ -130,6 +130,10 @@ export const issueSourceMessagesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional(),
 });
 
+export const issueEvidenceQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+});
+
 export const conversationFollowUpsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(20).optional(),
 });
@@ -165,6 +169,7 @@ export type AdminRankingsQuery = z.infer<typeof adminRankingsQuerySchema>;
 export type AdminStatusActivityQuery = z.infer<typeof adminStatusActivityQuerySchema>;
 export type AdminTriageQueueQuery = z.infer<typeof adminTriageQueueQuerySchema>;
 export type ListIssuesQuery = z.infer<typeof listIssuesQuerySchema>;
+export type IssueEvidenceQuery = z.infer<typeof issueEvidenceQuerySchema>;
 export type IssueSourceMessagesQuery = z.infer<typeof issueSourceMessagesQuerySchema>;
 export type RankingQuery = z.infer<typeof rankingQuerySchema>;
 export type UpdateConversationStatusInput = z.infer<typeof updateConversationStatusSchema>;

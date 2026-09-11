@@ -103,6 +103,8 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns recent conversations enriched with the latest message, latest AI analysis, and latest canonical Issue link for admin screens.
 - `GET /api/admin/intake-metrics`
   - Returns intake totals, AI analysis totals, Issue totals, urgent Issue totals, app breakdowns, and category breakdowns for admin summary cards.
+- `GET /api/admin/issues/:issueId/evidence`
+  - Returns an Issue evidence pack with priority components, urgency reasons, recommended action, AI analyses, source app / plan distribution, status events, and original source messages for admin review.
 - `GET /api/admin/issue-briefs`
   - Returns development-ready Issue briefs with priority context, representative source feedback, urgency reasons, and recommended admin actions.
 - `GET /api/admin/metadata-quality`
@@ -173,6 +175,8 @@ Admin follow-up queue filters: `workspaceId`, `appId`, and `limit`.
 Admin inbox filters: `workspaceId`, `appId`, `sourceApp`, `planId`, `status`, `category`, `severity`, `impact`, and `limit`.
 
 Admin intake metrics filters: `workspaceId`, `appId`, `sourceApp`, `planId`, and `since`.
+
+Admin issue evidence filters: `limit`.
 
 Admin issue brief filters: `category`, `status`, and `limit`.
 

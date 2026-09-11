@@ -19,6 +19,7 @@ import type {
   CreateFeedbackIntakeInput,
   CreateMessageInput,
   EmbedConfigQuery,
+  IssueEvidenceQuery,
   IssueSourceMessagesQuery,
   ListConversationsQuery,
   ListIssuesQuery,
@@ -795,6 +796,114 @@ export async function getIssueSourceMessages(db: D1Database, issueId: string, qu
   return {
     issue,
     messages: result.results,
+    filters: { limit },
+    generatedAt: nowIso(),
+  };
+}
+
+export async function getAdminIssueEvidence(db: D1Database, issueId: string, query: IssueEvidenceQuery = {}) {
+  const issue = await db.prepare(`SELECT * FROM feedback_issues WHERE issue_id = ?`).bind(issueId).first<Record<string, unknown>>();
+  if (!issue) return null;
+
+  const limit = query.limit ?? 20;
+  const [messages, analyses, appPlans, statusEvents] = await Promise.all([
+    db.prepare(`
+      SELECT
+        fil.issue_link_id,
+        fil.similarity_score,
+        fil.match_reason,
+        fil.created_at AS linked_at,
+        c.conversation_id,
+        c.app_id,
+        c.source_app,
+        c.app_name,
+        c.plan_id,
+        c.workspace_id,
+        c.user_id,
+        c.route,
+        c.screen_name,
+        c.current_screen,
+        c.app_version,
+        c.device,
+        c.browser,
+        c.occurred_at,
+        c.correlation_id,
+        m.message_id,
+        m.role,
+        m.body,
+        m.created_at AS message_created_at
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      JOIN feedback_messages m ON m.conversation_id = c.conversation_id
+      WHERE fil.issue_id = ?
+      ORDER BY fil.created_at DESC, m.created_at ASC
+      LIMIT ?
+    `).bind(issueId, limit).all<Record<string, unknown>>(),
+    db.prepare(`
+      SELECT
+        a.analysis_id,
+        a.conversation_id,
+        a.category,
+        a.severity,
+        a.impact,
+        a.confidence,
+        a.summary,
+        a.normalized_problem,
+        a.suggested_questions_json,
+        a.metadata_json,
+        a.created_at,
+        fil.similarity_score,
+        fil.match_reason
+      FROM feedback_issue_links fil
+      JOIN feedback_ai_analyses a ON a.analysis_id = fil.analysis_id
+      WHERE fil.issue_id = ?
+      ORDER BY a.created_at DESC
+      LIMIT ?
+    `).bind(issueId, limit).all<Record<string, unknown>>(),
+    db.prepare(`
+      SELECT
+        c.source_app,
+        COALESCE(c.plan_id, 'unknown') AS plan_id,
+        COUNT(DISTINCT c.conversation_id) AS conversation_count,
+        COUNT(DISTINCT m.message_id) AS message_count
+      FROM feedback_issue_links fil
+      JOIN feedback_conversations c ON c.conversation_id = fil.conversation_id
+      LEFT JOIN feedback_messages m ON m.conversation_id = c.conversation_id
+      WHERE fil.issue_id = ?
+      GROUP BY c.source_app, COALESCE(c.plan_id, 'unknown')
+      ORDER BY conversation_count DESC, message_count DESC
+    `).bind(issueId).all<Record<string, unknown>>(),
+    db.prepare(`SELECT * FROM feedback_issue_status_events WHERE issue_id = ? ORDER BY created_at DESC LIMIT 20`).bind(issueId).all<Record<string, unknown>>(),
+  ]);
+
+  const urgencyReasons = explainUrgency(issue);
+  const recommendedAction = recommendIssueAction(issue);
+
+  return {
+    issue: {
+      ...issue,
+      priorityComponents: parseJsonObject(issue.priority_components_json),
+      urgencyReasons,
+      recommendedAction,
+      recommendedActionReasons: explainRecommendedAction(issue),
+    },
+    evidenceSummary: {
+      sourceConversationCount: appPlans.results.reduce((sum, row) => sum + Number(row.conversation_count ?? 0), 0),
+      sourceMessageCount: appPlans.results.reduce((sum, row) => sum + Number(row.message_count ?? 0), 0),
+      analysisCount: analyses.results.length,
+      appPlanSegments: appPlans.results,
+      shouldNotifyAdmin: urgencyReasons.length > 0,
+      notificationReasons: urgencyReasons,
+      rawVoicePreservedAfterRedaction: true,
+      developmentManagementOwnership: false,
+    },
+    analyses: analyses.results.map((analysis) => ({
+      ...analysis,
+      suggestedQuestions: parseJsonStringArray(analysis.suggested_questions_json),
+      metadata: parseJsonObject(analysis.metadata_json),
+    })),
+    sourceMessages: messages.results,
+    statusEvents: statusEvents.results,
     filters: { limit },
     generatedAt: nowIso(),
   };
@@ -2014,5 +2123,15 @@ function parseJsonStringArray(value: unknown) {
     return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
   } catch {
     return [];
+  }
+}
+
+function parseJsonObject(value: unknown) {
+  if (typeof value !== 'string') return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
   }
 }

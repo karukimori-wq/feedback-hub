@@ -195,6 +195,12 @@ Important response fields:
 - `releaseIntakeSummary.segments[].attentionReasons`: Flags such as `urgent_issue_present` or `metadata_incomplete`.
 - `releaseIntakeSummary.safeguards`: Confirms source-app-owned UI, Feedback Hub processing, AI Platform Core analysis, and no body storage for payment details or secrets.
 
+```http
+GET /api/admin/issues/{issueId}/evidence?limit=20
+```
+
+Use this when an admin needs to inspect why AI grouped feedback into an Issue. It returns the canonical Issue, urgency reasons, recommended action, priority components, AI analyses, app / plan distribution, status events, and the original source messages preserved after redaction.
+
 ## Response Handling
 
 Successful intake returns `201`.
