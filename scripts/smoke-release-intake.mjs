@@ -67,6 +67,7 @@ await checkJson('GET /api/admin/intake-metrics numeria free', '/api/admin/intake
   method: 'GET',
   expect: (body) => body.status === 'success' && body.metrics?.filters?.sourceApp === 'numeria-studio' && body.metrics?.filters?.planId === 'free',
 });
+const numeriaFreeCorrelationId = `smoke_numeria_free_${Date.now()}`;
 await checkJson('POST /api/feedback/intake numeria free', '/api/feedback/intake', {
   method: 'POST',
   body: releaseFeedback({
@@ -75,9 +76,16 @@ await checkJson('POST /api/feedback/intake numeria free', '/api/feedback/intake'
     planId: 'free',
     category: 'Question',
     initialMessage: 'Freeプランの鑑定上限はどこで確認できますか？',
-    correlationId: `smoke_numeria_free_${Date.now()}`,
+    correlationId: numeriaFreeCorrelationId,
   }),
   expect: (body) => body.status === 'success' && body.intake?.status === 'accepted',
+});
+await checkJson('GET /api/embed/feedback/status numeria free', `/api/embed/feedback/status?correlationId=${encodeURIComponent(numeriaFreeCorrelationId)}&sourceApp=numeria-studio`, {
+  method: 'GET',
+  expect: (body) => body.status === 'success'
+    && body.feedbackStatus?.lookup?.correlationId === numeriaFreeCorrelationId
+    && body.feedbackStatus?.conversation?.source_app === 'numeria-studio'
+    && body.feedbackStatus?.issue,
 });
 await checkJson('POST /api/embed/feedback velvet pro', '/api/embed/feedback', {
   method: 'POST',

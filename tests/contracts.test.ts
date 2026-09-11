@@ -49,12 +49,14 @@ describe('contract endpoints', () => {
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'external_intelligence_snapshot', method: 'GET', path: '/api/admin/external-intelligence-snapshot' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'source_app_contracts', method: 'GET', path: '/api/admin/source-app-contracts' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'release_intake_summary', method: 'GET', path: '/api/admin/release-intake-summary' });
+    expect(body.releaseSmoke.checks).toContainEqual({ key: 'numeria_free_status_recovery', method: 'GET', path: '/api/embed/feedback/status?correlationId=SMOKE_CORRELATION_ID&sourceApp=numeria-studio' });
     expect(body.releaseSmoke.checks).toContainEqual({ key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' });
     expect(body.owns).toContain('Feedback AI Analysis');
     expect(body.doesNotOwn).toContain('Engineering task management');
     expect(body.doesNotOwn).toContain('Payment');
     expect(body.endpoints).toContain('GET /api/embed/config');
     expect(body.endpoints).toContain('POST /api/embed/feedback');
+    expect(body.endpoints).toContain('GET /api/embed/feedback/status');
     expect(body.endpoints).toContain('GET /api/embed/conversations/:conversationId');
     expect(body.endpoints).toContain('POST /api/embed/conversations/:conversationId/messages');
     expect(body.endpoints).toContain('POST /api/feedback/intake');
@@ -174,6 +176,7 @@ describe('contract endpoints', () => {
     expect(body.smokePlan.checks).toContainEqual({ key: 'external_intelligence_snapshot', method: 'GET', path: '/api/admin/external-intelligence-snapshot' });
     expect(body.smokePlan.checks).toContainEqual({ key: 'source_app_contracts', method: 'GET', path: '/api/admin/source-app-contracts' });
     expect(body.smokePlan.checks).toContainEqual({ key: 'release_intake_summary', method: 'GET', path: '/api/admin/release-intake-summary' });
+    expect(body.smokePlan.checks).toContainEqual({ key: 'numeria_free_status_recovery', method: 'GET', path: '/api/embed/feedback/status?correlationId=SMOKE_CORRELATION_ID&sourceApp=numeria-studio' });
     expect(body.smokePlan.checks).toContainEqual({ key: 'numeria_free_intake', method: 'POST', path: '/api/feedback/intake' });
     expect(body.smokePlan.samplePayloads.numeriaStudioFree.appId).toBe('numeria-studio');
     expect(body.smokePlan.samplePayloads.numeriaStudioFree.planId).toBe('free');
@@ -291,7 +294,7 @@ describe('contract endpoints', () => {
           processingOwner: string;
           aiProvider: string;
           knowledgeScope: string;
-          endpoints: { config: string; intake: string; followUpTemplate: string; conversationTemplate: string };
+          endpoints: { config: string; intake: string; feedbackStatus: string; followUpTemplate: string; conversationTemplate: string };
           requiredFields: string[];
           autoContextFields: string[];
           acceptedPlanIds: string[];
@@ -325,6 +328,7 @@ describe('contract endpoints', () => {
     expect(numeria?.knowledgeScope).toBe('numeria-studio');
     expect(numeria?.endpoints.config).toBe('/api/embed/config?appId=numeria-studio');
     expect(numeria?.endpoints.intake).toBe('/api/embed/feedback');
+    expect(numeria?.endpoints.feedbackStatus).toBe('/api/embed/feedback/status');
     expect(numeria?.requiredFields).toContain('initialMessage');
     expect(numeria?.requiredFields).toContain('correlationId');
     expect(numeria?.autoContextFields).toContain('browser');
@@ -602,6 +606,7 @@ describe('contract endpoints', () => {
         processingOwner: string;
         aiProvider: string;
         intakeEndpoint: string;
+        feedbackStatusEndpoint: string;
         followUpEndpointTemplate: string;
         conversationEndpointTemplate: string;
         requiredFields: string[];
@@ -619,6 +624,7 @@ describe('contract endpoints', () => {
     expect(body.config.processingOwner).toBe('feedback-hub');
     expect(body.config.aiProvider).toBe('ai-platform-core');
     expect(body.config.intakeEndpoint).toBe('/api/embed/feedback');
+    expect(body.config.feedbackStatusEndpoint).toBe('/api/embed/feedback/status');
     expect(body.config.followUpEndpointTemplate).toBe('/api/embed/conversations/{conversationId}/messages');
     expect(body.config.conversationEndpointTemplate).toBe('/api/embed/conversations/{conversationId}');
     expect(body.config.requiredFields).toContain('sourceApp');
@@ -674,12 +680,110 @@ describe('contract endpoints', () => {
     expect(body.errorCode).toBe('VALIDATION_ERROR');
   });
 
+  it('returns embed feedback status by correlation id', async () => {
+    const response = await app.request('/api/embed/feedback/status?correlationId=corr_1&sourceApp=numeria-studio', {}, {
+      ...env,
+      DB: d1ForEmbedFeedbackStatus({
+        lookup: { conversation_id: 'conv_1' },
+        conversation: {
+          conversation_id: 'conv_1',
+          app_id: 'numeria-studio',
+          source_app: 'numeria-studio',
+          app_name: 'Numeria Studio',
+          plan_id: 'free',
+          workspace_id: 'ws_1',
+          user_id: 'user_1',
+          current_screen: '鑑定作成',
+          correlation_id: 'corr_1',
+          status: 'open',
+        },
+        messages: [
+          { message_id: 'msg_1', conversation_id: 'conv_1', role: 'user', body: '保存できない', created_at: '2026-09-11T00:00:00.000Z' },
+        ],
+        analyses: [
+          {
+            analysis_id: 'ana_1',
+            category: 'Bug',
+            severity: 'Critical',
+            impact: 'Critical',
+            confidence: 0.91,
+            summary: '保存処理で失敗する',
+            normalized_problem: 'save-persistence',
+            suggested_questions_json: '["どの画面で発生しましたか？"]',
+            created_at: '2026-09-11T00:00:01.000Z',
+          },
+        ],
+        issueLinks: [
+          {
+            issue_id: 'issue_1',
+            canonical_title: '保存処理の不具合',
+            category: 'Bug',
+            severity: 'Critical',
+            impact: 'Critical',
+            count: 1,
+            priority_score: 100,
+            status: 'open',
+            similarity_score: 1,
+            match_reason: 'new-canonical-issue',
+          },
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      feedbackStatus: {
+        lookup: { correlationId: string; sourceApp: string | null };
+        conversation: { conversation_id: string; source_app: string; correlation_id: string };
+        latestAnalysis: { category: string; suggestedQuestions: string[] };
+        issue: { issueId: string; title: string; matchReason: string };
+        intake: { nextAction: string; followUpQuestions: string[] };
+      };
+    };
+    expect(body.feedbackStatus.lookup.correlationId).toBe('corr_1');
+    expect(body.feedbackStatus.lookup.sourceApp).toBe('numeria-studio');
+    expect(body.feedbackStatus.conversation.conversation_id).toBe('conv_1');
+    expect(body.feedbackStatus.latestAnalysis.category).toBe('Bug');
+    expect(body.feedbackStatus.latestAnalysis.suggestedQuestions).toEqual(['どの画面で発生しましたか？']);
+    expect(body.feedbackStatus.issue.issueId).toBe('issue_1');
+    expect(body.feedbackStatus.issue.title).toBe('保存処理の不具合');
+    expect(body.feedbackStatus.issue.matchReason).toBe('new-canonical-issue');
+    expect(body.feedbackStatus.intake.nextAction).toBe('ask_follow_up');
+  });
+
+  it('returns not found for missing embed feedback status', async () => {
+    const response = await app.request('/api/embed/feedback/status?correlationId=missing', {}, {
+      ...env,
+      DB: d1ForEmbedFeedbackStatus({
+        lookup: null,
+        conversation: null,
+        messages: [],
+        analyses: [],
+        issueLinks: [],
+      }),
+    });
+
+    expect(response.status).toBe(404);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('FEEDBACK_STATUS_NOT_FOUND');
+  });
+
   it('requires a body for embed conversation follow-up messages before persistence', async () => {
     const response = await app.request('/api/embed/conversations/conv_test/messages', {
       method: 'POST',
       body: JSON.stringify({}),
       headers: { 'Content-Type': 'application/json' },
     }, env);
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { status: string; errorCode: string };
+    expect(body.status).toBe('error');
+    expect(body.errorCode).toBe('VALIDATION_ERROR');
+  });
+
+  it('requires correlation id for embed feedback status before persistence', async () => {
+    const response = await app.request('/api/embed/feedback/status', {}, env);
 
     expect(response.status).toBe(400);
     const body = await response.json() as { status: string; errorCode: string };
@@ -957,6 +1061,32 @@ function d1ForIssueEvidence(data: {
           if (sql.includes('JOIN feedback_messages m')) return { results: data.messages };
           if (sql.includes('JOIN feedback_ai_analyses a')) return { results: data.analyses };
           if (sql.includes('feedback_issue_status_events')) return { results: data.statusEvents };
+          return { results: [] };
+        },
+      }),
+    }),
+  } as unknown as D1Database;
+}
+
+function d1ForEmbedFeedbackStatus(data: {
+  lookup: Record<string, unknown> | null;
+  conversation: Record<string, unknown> | null;
+  messages: Array<Record<string, unknown>>;
+  analyses: Array<Record<string, unknown>>;
+  issueLinks: Array<Record<string, unknown>>;
+}) {
+  return {
+    prepare: (sql: string) => ({
+      bind: () => ({
+        first: async () => {
+          if (sql.includes('correlation_id = ?')) return data.lookup;
+          if (sql.includes('SELECT * FROM feedback_conversations WHERE conversation_id = ?')) return data.conversation;
+          return null;
+        },
+        all: async () => {
+          if (sql.includes('FROM feedback_messages')) return { results: data.messages };
+          if (sql.includes('FROM feedback_ai_analyses')) return { results: data.analyses };
+          if (sql.includes('FROM feedback_issue_links fil')) return { results: data.issueLinks };
           return { results: [] };
         },
       }),

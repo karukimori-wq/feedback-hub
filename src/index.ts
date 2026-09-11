@@ -8,6 +8,7 @@ import {
   createFeedbackIntake,
   getEmbedConversation,
   getEmbedConfig,
+  getEmbedFeedbackStatus,
   createMessage,
   getAdminActionBoard,
   getAdminAppSummary,
@@ -40,7 +41,7 @@ import {
   updateIssueStatus,
   urgentNotifications,
 } from './repository';
-import { adminActionBoardQuerySchema, adminAppSummaryQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminReleaseIntakeSummaryQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createEmbedConversationMessageSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, issueEvidenceQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
+import { adminActionBoardQuerySchema, adminAppSummaryQuerySchema, adminFollowUpQueueQuerySchema, adminInboxQuerySchema, adminIntakeMetricsQuerySchema, adminIssueBriefsQuerySchema, adminMetadataQualityQuerySchema, adminRankingsQuerySchema, adminReleaseIntakeSummaryQuerySchema, adminStatusActivityQuerySchema, adminTriageQueueQuerySchema, conversationFollowUpsQuerySchema, createConversationSchema, createEmbedConversationMessageSchema, createFeedbackIntakeSchema, createMessageSchema, embedConfigQuerySchema, embedFeedbackStatusQuerySchema, issueEvidenceQuerySchema, issueSourceMessagesQuerySchema, listConversationsQuerySchema, listIssuesQuerySchema, rankingQuerySchema, updateConversationStatusSchema, updateIssueStatusSchema } from './schemas';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -100,6 +101,7 @@ app.get('/contracts/status', (c) => c.json({
     'POST /api/persistence/roundtrip',
     'GET /api/embed/config',
     'POST /api/embed/feedback',
+    'GET /api/embed/feedback/status',
     'GET /api/embed/conversations/:conversationId',
     'POST /api/embed/conversations/:conversationId/messages',
     'POST /api/feedback/intake',
@@ -170,6 +172,18 @@ app.post('/api/embed/feedback', async (c) => {
   const input = createFeedbackIntakeSchema.parse(await c.req.json());
   const result = await createFeedbackIntake(c.env.DB, c.env, input);
   return c.json({ status: 'success', ...result }, 201);
+});
+
+app.get('/api/embed/feedback/status', async (c) => {
+  const query = embedFeedbackStatusQuerySchema.parse({
+    correlationId: c.req.query('correlationId'),
+    sourceApp: c.req.query('sourceApp'),
+    workspaceId: c.req.query('workspaceId'),
+    userId: c.req.query('userId'),
+  });
+  const result = await getEmbedFeedbackStatus(c.env.DB, query);
+  if (!result) return c.json({ status: 'error', errorCode: 'FEEDBACK_STATUS_NOT_FOUND' }, 404);
+  return c.json({ status: 'success', feedbackStatus: result });
 });
 
 app.get('/api/embed/conversations/:conversationId', async (c) => {

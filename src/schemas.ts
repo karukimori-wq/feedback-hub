@@ -27,6 +27,13 @@ export const embedConfigQuerySchema = z.object({
   appId: z.string().min(1),
 });
 
+export const embedFeedbackStatusQuerySchema = z.object({
+  correlationId: z.string().min(1),
+  sourceApp: z.string().min(1).optional(),
+  workspaceId: z.string().min(1).optional(),
+  userId: z.string().min(1).optional(),
+});
+
 export const createMessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
   body: z.string().min(1),
@@ -153,6 +160,7 @@ export const updateIssueStatusSchema = z.object({
 export type CreateConversationInput = z.infer<typeof createConversationSchema>;
 export type CreateFeedbackIntakeInput = z.infer<typeof createFeedbackIntakeSchema>;
 export type EmbedConfigQuery = z.infer<typeof embedConfigQuerySchema>;
+export type EmbedFeedbackStatusQuery = z.infer<typeof embedFeedbackStatusQuerySchema>;
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 export type CreateEmbedConversationMessageInput = z.infer<typeof createEmbedConversationMessageSchema>;
 export type ConversationFollowUpsQuery = z.infer<typeof conversationFollowUpsQuerySchema>;

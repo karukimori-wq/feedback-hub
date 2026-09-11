@@ -134,7 +134,8 @@ Do not send payment details, raw card numbers, API keys, tokens, passwords, or s
 5. If Feedback Hub returns `intake.nextAction: "ask_follow_up"`, show the returned `followUpQuestions`.
 6. If the user answers a follow-up question, post that answer to `/api/embed/conversations/{conversationId}/messages`.
 7. Source app can reload the latest state from `/api/embed/conversations/{conversationId}`.
-8. Otherwise show a received state.
+8. If the source app loses the temporary `conversationId`, reload by `correlationId` from `/api/embed/feedback/status`.
+9. Otherwise show a received state.
 
 ## Send Follow-Up Answers
 
@@ -214,6 +215,21 @@ Important response fields:
 - `fallbackUsed`: Should be `false` when AI Platform Core is reachable.
 - `intake.nextAction`: `show_received` or `ask_follow_up`.
 - `intake.followUpQuestions`: Questions to show only when more detail is useful.
+
+## Feedback Status Recovery
+
+```http
+GET /api/embed/feedback/status?correlationId={correlationId}&sourceApp={sourceApp}
+```
+
+Use this endpoint when the source app needs to restore the question box state after navigation, refresh, or a mobile app resume. Optional `workspaceId` and `userId` filters can narrow the lookup when the same `correlationId` format is reused across workspaces.
+
+Important response fields:
+
+- `feedbackStatus.conversation`: Conversation metadata for the original feedback.
+- `feedbackStatus.latestAnalysis`: Latest AI Platform Core analysis or fallback result.
+- `feedbackStatus.issue`: Canonical Issue linked by similarity grouping.
+- `feedbackStatus.intake.nextAction`: Whether to show receipt or ask a follow-up.
 
 ## UI Guidance
 

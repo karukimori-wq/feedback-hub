@@ -67,6 +67,8 @@ See `docs/embedding.md` for the app-side integration contract.
   - Returns the source-app-owned question box contract for an `appId`.
 - `POST /api/embed/feedback`
   - Receives feedback from each app's own question box UI and runs the same intake flow as `/api/feedback/intake`.
+- `GET /api/embed/feedback/status`
+  - Returns an app-friendly feedback status by `correlationId`, with optional `sourceApp`, `workspaceId`, and `userId` filters for source app UI recovery.
 - `GET /api/embed/conversations/:conversationId`
   - Returns an app-friendly conversation view with messages, latest AI analysis, canonical Issue, and next UI action.
 - `POST /api/embed/conversations/:conversationId/messages`
@@ -203,6 +205,8 @@ Admin status activity filters: `issueId`, `nextStatus`, `since`, and `limit`.
 Admin triage queue filters: `category`, `status`, `severity`, `impact`, `minCount`, and `limit`.
 
 Embed config filters: `appId`.
+
+Embed feedback status filters: `correlationId`, `sourceApp`, `workspaceId`, and `userId`.
 
 ## Platform Contract
 

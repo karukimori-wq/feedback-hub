@@ -14,6 +14,7 @@ export const RELEASE_SMOKE_CHECKS = [
   { key: 'release_intake_summary', method: 'GET', path: '/api/admin/release-intake-summary' },
   { key: 'numeria_free_metrics', method: 'GET', path: '/api/admin/intake-metrics?sourceApp=numeria-studio&planId=free' },
   { key: 'numeria_free_intake', method: 'POST', path: '/api/feedback/intake' },
+  { key: 'numeria_free_status_recovery', method: 'GET', path: '/api/embed/feedback/status?correlationId=SMOKE_CORRELATION_ID&sourceApp=numeria-studio' },
   { key: 'velvet_pro_embed_intake', method: 'POST', path: '/api/embed/feedback' },
 ] as const;
 export const EXTERNAL_INTELLIGENCE_SNAPSHOT_SECTIONS = [

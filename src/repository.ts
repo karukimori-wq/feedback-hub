@@ -19,6 +19,7 @@ import type {
   CreateFeedbackIntakeInput,
   CreateMessageInput,
   EmbedConfigQuery,
+  EmbedFeedbackStatusQuery,
   IssueEvidenceQuery,
   IssueSourceMessagesQuery,
   ListConversationsQuery,
@@ -76,6 +77,7 @@ export function getEmbedConfig(query: EmbedConfigQuery) {
     processingOwner: 'feedback-hub',
     aiProvider: 'ai-platform-core',
     intakeEndpoint: '/api/embed/feedback',
+    feedbackStatusEndpoint: '/api/embed/feedback/status',
     followUpEndpointTemplate: '/api/embed/conversations/{conversationId}/messages',
     conversationEndpointTemplate: '/api/embed/conversations/{conversationId}',
     compatibleIntakeEndpoint: '/api/feedback/intake',
@@ -109,6 +111,7 @@ export function getSourceAppContracts() {
       endpoints: {
         config: `/api/embed/config?appId=${config.appId}`,
         intake: config.intakeEndpoint,
+        feedbackStatus: config.feedbackStatusEndpoint,
         compatibleIntake: config.compatibleIntakeEndpoint,
         followUpTemplate: config.followUpEndpointTemplate,
         conversationTemplate: config.conversationEndpointTemplate,
@@ -488,6 +491,47 @@ export async function getEmbedConversation(db: D1Database, conversationId: strin
       followUpQuestions: suggestedQuestions,
     },
     generatedAt: nowIso(),
+  };
+}
+
+export async function getEmbedFeedbackStatus(db: D1Database, query: EmbedFeedbackStatusQuery) {
+  const conditions = ['correlation_id = ?'];
+  const values = [query.correlationId];
+
+  if (query.sourceApp) {
+    conditions.push('source_app = ?');
+    values.push(query.sourceApp);
+  }
+  if (query.workspaceId) {
+    conditions.push('workspace_id = ?');
+    values.push(query.workspaceId);
+  }
+  if (query.userId) {
+    conditions.push('user_id = ?');
+    values.push(query.userId);
+  }
+
+  const row = await db.prepare(`
+    SELECT conversation_id
+    FROM feedback_conversations
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY updated_at DESC
+    LIMIT 1
+  `).bind(...values).first<{ conversation_id: string }>();
+
+  if (!row) return null;
+
+  const status = await getEmbedConversation(db, row.conversation_id);
+  if (!status) return null;
+
+  return {
+    lookup: {
+      correlationId: query.correlationId,
+      sourceApp: query.sourceApp ?? null,
+      workspaceId: query.workspaceId ?? null,
+      userId: query.userId ?? null,
+    },
+    ...status,
   };
 }
 
