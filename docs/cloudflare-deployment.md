@@ -116,6 +116,8 @@ This checks health, contract status, release readiness, External Intelligence sn
 curl "$WORKER_URL/health"
 curl "$WORKER_URL/version"
 curl "$WORKER_URL/contracts/status"
+curl "$WORKER_URL/release/status"
+curl "$WORKER_URL/auth/status"
 curl "$WORKER_URL/api/persistence/status"
 curl -X POST "$WORKER_URL/api/persistence/roundtrip"
 curl "$WORKER_URL/api/embed/config?appId=numeria-studio"
