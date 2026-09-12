@@ -63,6 +63,10 @@ See `docs/embedding.md` for the app-side integration contract.
 - `GET /health`
 - `GET /version`
 - `GET /contracts/status`
+- `GET /release/status`
+  - Returns a compact Free / Pro release status for Platform Admin and professional-platform-contracts checks, including plan contract references, release scope, ownership boundaries, AI Platform Core usage, and readiness.
+- `GET /auth/status`
+  - Returns the delegated identity contract. Feedback Hub accepts source app / platform identity context and does not own authentication.
 - `GET /api/persistence/status`
 - `POST /api/persistence/roundtrip`
 - `GET /api/embed/config`
