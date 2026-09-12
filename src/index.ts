@@ -9,6 +9,7 @@ import {
   getEmbedConversation,
   getEmbedConfig,
   getEmbedFeedbackStatus,
+  getAuthStatus,
   createMessage,
   getAdminActionBoard,
   getAdminAppSummary,
@@ -31,6 +32,7 @@ import {
   getIssueSourceMessages,
   getPersistenceStatus,
   getRankedIssues,
+  getReleaseStatus,
   getRequestRankings,
   getSourceAppContracts,
   getUrgentNotificationSummary,
@@ -97,6 +99,8 @@ app.get('/contracts/status', (c) => c.json({
     'GET /health',
     'GET /version',
     'GET /contracts/status',
+    'GET /release/status',
+    'GET /auth/status',
     'GET /api/persistence/status',
     'POST /api/persistence/roundtrip',
     'GET /api/embed/config',
@@ -141,6 +145,16 @@ app.get('/contracts/status', (c) => c.json({
     'GET /api/admin/overview',
   ],
   timestamp: new Date().toISOString(),
+}));
+
+app.get('/release/status', async (c) => c.json({
+  status: 'success',
+  release: await getReleaseStatus(c.env.DB, c.env),
+}));
+
+app.get('/auth/status', (c) => c.json({
+  status: 'success',
+  auth: getAuthStatus(),
 }));
 
 app.get('/api/persistence/status', async (c) => c.json({
