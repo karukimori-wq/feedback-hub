@@ -54,6 +54,8 @@ describe('contract endpoints', () => {
     expect(body.owns).toContain('Feedback AI Analysis');
     expect(body.doesNotOwn).toContain('Engineering task management');
     expect(body.doesNotOwn).toContain('Payment');
+    expect(body.endpoints).toContain('GET /release/status');
+    expect(body.endpoints).toContain('GET /auth/status');
     expect(body.endpoints).toContain('GET /api/embed/config');
     expect(body.endpoints).toContain('POST /api/embed/feedback');
     expect(body.endpoints).toContain('GET /api/embed/feedback/status');
@@ -127,6 +129,104 @@ describe('contract endpoints', () => {
     expect(body.readiness.database.missingColumns).toEqual([]);
     expect(body.readiness.safeguards.bugReportsRateLimitedByPlan).toBe(false);
     expect(body.readiness.safeguards.sensitiveBodyRedaction).toBe(true);
+  });
+
+  it('returns release status for Platform Admin and professional-platform-contracts checks', async () => {
+    const response = await app.request('/release/status', {}, {
+      ...env,
+      AI_PLATFORM_CORE_BASE_URL: 'https://ai-platform-core.test',
+      DB: d1WithConversationColumns([
+        'conversation_id',
+        'source_app',
+        'plan_id',
+        'current_screen',
+        'submitted_category',
+        'correlation_id',
+      ]),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      status: string;
+      release: {
+        appName: string;
+        status: string;
+        planContractReferences: string[];
+        releaseScope: {
+          sourceApps: string[];
+          planIds: string[];
+          futurePlanIds: string[];
+          classificationTargets: string[];
+        };
+        ownership: { owns: string[]; doesNotOwn: string[] };
+        safeguards: {
+          bugReportsRateLimitedByPlan: boolean;
+          aiProvider: string;
+          sensitiveBodyRedaction: boolean;
+          rawFullAppraisalStored: boolean;
+          rawFullConversationStored: boolean;
+          rawCustomerMasterStored: boolean;
+        };
+        readiness: { ready: boolean };
+      };
+    };
+    expect(body.status).toBe('success');
+    expect(body.release.appName).toBe('feedback-hub');
+    expect(body.release.status).toBe('ready');
+    expect(body.release.planContractReferences).toContain('docs/contracts/plan-contract.md');
+    expect(body.release.releaseScope.sourceApps).toEqual(['numeria-studio', 'velvet']);
+    expect(body.release.releaseScope.planIds).toEqual(['free', 'pro']);
+    expect(body.release.releaseScope.futurePlanIds).toContain('business');
+    expect(body.release.releaseScope.classificationTargets).toContain('free-plan-limit-question');
+    expect(body.release.releaseScope.classificationTargets).toContain('auth-login-error');
+    expect(body.release.ownership.owns).toContain('Feedback AI Analysis');
+    expect(body.release.ownership.doesNotOwn).toContain('Authentication provider');
+    expect(body.release.ownership.doesNotOwn).toContain('Plan billing management');
+    expect(body.release.safeguards.bugReportsRateLimitedByPlan).toBe(false);
+    expect(body.release.safeguards.aiProvider).toBe('ai-platform-core');
+    expect(body.release.safeguards.sensitiveBodyRedaction).toBe(true);
+    expect(body.release.safeguards.rawFullAppraisalStored).toBe(false);
+    expect(body.release.safeguards.rawFullConversationStored).toBe(false);
+    expect(body.release.safeguards.rawCustomerMasterStored).toBe(false);
+    expect(body.release.readiness.ready).toBe(true);
+  });
+
+  it('returns auth status as a delegated identity contract', async () => {
+    const response = await app.request('/auth/status', {}, env);
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      status: string;
+      auth: {
+        appName: string;
+        status: string;
+        authOwner: string;
+        feedbackHubOwnsAuthentication: boolean;
+        identityMode: string;
+        professionalIdRequired: boolean;
+        acceptedIdentityFields: string[];
+        acceptedHeaders: string[];
+        releaseScope: { sourceApps: string[]; planIds: string[] };
+        bodySafety: Record<string, boolean>;
+      };
+    };
+    expect(body.status).toBe('success');
+    expect(body.auth.appName).toBe('feedback-hub');
+    expect(body.auth.status).toBe('delegated');
+    expect(body.auth.authOwner).toBe('source-app-or-platform-auth');
+    expect(body.auth.feedbackHubOwnsAuthentication).toBe(false);
+    expect(body.auth.identityMode).toBe('workspaceId+userId');
+    expect(body.auth.professionalIdRequired).toBe(false);
+    expect(body.auth.acceptedIdentityFields).toEqual(['workspaceId', 'userId', 'sourceApp', 'planId']);
+    expect(body.auth.acceptedHeaders).toContain('X-Correlation-Id');
+    expect(body.auth.releaseScope.sourceApps).toEqual(['numeria-studio', 'velvet']);
+    expect(body.auth.releaseScope.planIds).toEqual(['free', 'pro']);
+    expect(body.auth.bodySafety.storeSecrets).toBe(false);
+    expect(body.auth.bodySafety.storeStripeSecrets).toBe(false);
+    expect(body.auth.bodySafety.storePaymentDetails).toBe(false);
+    expect(body.auth.bodySafety.storeFullAppraisalText).toBe(false);
+    expect(body.auth.bodySafety.storeFullConversationText).toBe(false);
+    expect(body.auth.bodySafety.storeFullCustomerMaster).toBe(false);
   });
 
   it('marks release readiness as not ready when AI Platform Core or release columns are missing', async () => {
