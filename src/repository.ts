@@ -209,6 +209,64 @@ export async function getAdminReleaseReadiness(db: D1Database, env: AiPlatformCo
   };
 }
 
+export async function getReleaseStatus(db: D1Database, env: AiPlatformCoreEnv = {}) {
+  const readiness = await getAdminReleaseReadiness(db, env);
+  return {
+    appName: 'feedback-hub',
+    status: readiness.ready ? 'ready' : 'not_ready',
+    planContractVersion: '0.1.0',
+    planContractReferences: [...PLAN_CONTRACT_REFERENCES],
+    releaseScope: {
+      sourceApps: [...RELEASE_READY_SOURCE_APPS],
+      planIds: ['free', 'pro'],
+      futurePlanIds: ['business'],
+      requiredContextFields: [...RELEASE_CONTEXT_FIELDS],
+      classificationTargets: [...RELEASE_CLASSIFICATION_TARGETS],
+    },
+    ownership: {
+      owns: ['Feedback Conversation', 'Feedback Message', 'Feedback AI Analysis', 'Feedback Issue', 'Feedback Ranking'],
+      doesNotOwn: ['Customer master', 'Reservation', 'Payment', 'Sales / revenue', 'Engineering task management', 'Plan billing management', 'Authentication provider'],
+    },
+    safeguards: {
+      bugReportsRateLimitedByPlan: false,
+      aiProvider: 'ai-platform-core',
+      sensitiveBodyRedaction: true,
+      rawFullAppraisalStored: false,
+      rawFullConversationStored: false,
+      rawCustomerMasterStored: false,
+    },
+    readiness,
+    generatedAt: nowIso(),
+  };
+}
+
+export function getAuthStatus() {
+  return {
+    appName: 'feedback-hub',
+    status: 'delegated',
+    authOwner: 'source-app-or-platform-auth',
+    feedbackHubOwnsAuthentication: false,
+    identityMode: 'workspaceId+userId',
+    professionalIdRequired: false,
+    acceptedIdentityFields: ['workspaceId', 'userId', 'sourceApp', 'planId'],
+    acceptedHeaders: ['X-Workspace-Id', 'X-User-Id', 'X-Source-App', 'X-Plan-Id', 'X-Request-Id', 'X-Correlation-Id'],
+    releaseScope: {
+      sourceApps: [...RELEASE_READY_SOURCE_APPS],
+      planIds: ['free', 'pro'],
+    },
+    bodySafety: {
+      storeApiKeys: false,
+      storeSecrets: false,
+      storeStripeSecrets: false,
+      storePaymentDetails: false,
+      storeFullAppraisalText: false,
+      storeFullConversationText: false,
+      storeFullCustomerMaster: false,
+    },
+    generatedAt: nowIso(),
+  };
+}
+
 export async function getAdminReleaseIntakeSummary(db: D1Database, query: AdminReleaseIntakeSummaryQuery = {}) {
   const releaseSourceApps = [...RELEASE_READY_SOURCE_APPS];
   const releasePlanIds = ['free', 'pro'];
