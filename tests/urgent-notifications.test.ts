@@ -24,6 +24,14 @@ describe('explainUrgency', () => {
     expect(reasons).toEqual(['repeated_feedback_threshold']);
   });
 
+  it('explains release-critical notification reasons', () => {
+    expect(explainUrgency({ normalized_problem: 'billing-payment-issue' })).toContain('billing_issue');
+    expect(explainUrgency({ normalized_problem: 'data-loss-suspected' })).toContain('data_loss_suspected');
+    expect(explainUrgency({ normalized_problem: 'auth-login-error' })).toContain('login_blocked');
+    expect(explainUrgency({ normalized_problem: 'plan-reflection-failure' })).toContain('plan_reflection_failure');
+    expect(explainUrgency({ normalized_problem: 'save-persistence' })).toContain('production_save_failed');
+  });
+
   it('summarizes urgent notifications by reason', () => {
     const summary = summarizeUrgentNotifications([
       {
@@ -40,6 +48,7 @@ describe('explainUrgency', () => {
     expect(summary.byReason.critical_severity).toBe(1);
     expect(summary.byReason.critical_impact).toBe(1);
     expect(summary.byReason.repeated_feedback_threshold).toBe(1);
+    expect(summary.byReason.billing_issue).toBe(0);
     expect(summary.hasCritical).toBe(true);
     expect(summary.notificationLevel).toBe('critical');
     expect(summary.topPriorityScore).toBe(90);

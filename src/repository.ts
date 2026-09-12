@@ -1,5 +1,5 @@
 import { analyzeWithAiPlatformCore, type AiPlatformCoreEnv } from './ai-platform-core';
-import { ACCEPTED_PLAN_IDS, RELEASE_CONTEXT_FIELDS, RELEASE_READY_SOURCE_APPS, SUPPORTED_SOURCE_APPS, analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
+import { ACCEPTED_PLAN_IDS, PLAN_CONTRACT_REFERENCES, RELEASE_CLASSIFICATION_TARGETS, RELEASE_CONTEXT_FIELDS, RELEASE_READY_SOURCE_APPS, SUPPORTED_SOURCE_APPS, analyzeFeedbackText, makeIssueTitle, similarityScore, type FeedbackAnalysis } from './domain';
 import { newId, nowIso } from './ids';
 import type {
   AdminActionBoardQuery,
@@ -83,9 +83,11 @@ export function getEmbedConfig(query: EmbedConfigQuery) {
     compatibleIntakeEndpoint: '/api/feedback/intake',
     requiredFields: [...RELEASE_CONTEXT_FIELDS, 'initialMessage'],
     acceptedPlanIds: [...ACCEPTED_PLAN_IDS],
+    planContractReferences: [...PLAN_CONTRACT_REFERENCES],
     bugReportsRateLimitedByPlan: false,
     autoContextFields: ['route', 'screenName', 'currentScreen', 'appVersion', 'planId', 'device', 'browser', 'occurredAt', 'correlationId'],
     conversationModel: ['Conversation', 'Message', 'AI Analysis', 'Issue'],
+    releaseClassificationTargets: [...RELEASE_CLASSIFICATION_TARGETS],
     supportedCategories: ['Question', 'Bug', 'Improvement', 'Feature Request', 'UX Feedback', 'Other'],
     responseModes: ['show_received', 'ask_follow_up'],
     rawVoicePreserved: true,
@@ -119,8 +121,10 @@ export function getSourceAppContracts() {
       requiredFields: config.requiredFields,
       autoContextFields: config.autoContextFields,
       acceptedPlanIds: config.acceptedPlanIds,
+      planContractReferences: config.planContractReferences,
       releasePlanIds: releaseReady ? ['free', 'pro'] : [],
       bugReportsRateLimitedByPlan: config.bugReportsRateLimitedByPlan,
+      releaseClassificationTargets: config.releaseClassificationTargets,
       supportedCategories: config.supportedCategories,
       responseModes: config.responseModes,
       bodyRules: {
@@ -135,6 +139,8 @@ export function getSourceAppContracts() {
   return {
     releaseReadySourceApps: [...RELEASE_READY_SOURCE_APPS],
     supportedSourceApps: [...SUPPORTED_SOURCE_APPS],
+    planContractReferences: [...PLAN_CONTRACT_REFERENCES],
+    releaseClassificationTargets: [...RELEASE_CLASSIFICATION_TARGETS],
     contracts,
     generatedAt,
   };
@@ -183,6 +189,8 @@ export async function getAdminReleaseReadiness(db: D1Database, env: AiPlatformCo
       sourceApps: [...RELEASE_READY_SOURCE_APPS],
       planIds: ['free', 'pro'],
       contextFields: [...RELEASE_CONTEXT_FIELDS],
+      planContractReferences: [...PLAN_CONTRACT_REFERENCES],
+      classificationTargets: [...RELEASE_CLASSIFICATION_TARGETS],
     },
     aiPlatformCore: {
       configured: aiPlatformCoreConfigured,
@@ -2155,18 +2163,29 @@ function decideIntakeNextAction(suggestedQuestions: string[]) {
 
 export function explainUrgency(issue: Record<string, unknown>) {
   const reasons = [];
+  const normalizedProblem = String(issue.normalized_problem ?? '');
   if (issue.severity === 'Critical') reasons.push('critical_severity');
   if (issue.impact === 'Critical') reasons.push('critical_impact');
   if (Number(issue.count ?? 0) >= 30) reasons.push('repeated_feedback_threshold');
+  if (normalizedProblem === 'billing-payment-issue') reasons.push('billing_issue');
+  if (normalizedProblem === 'data-loss-suspected') reasons.push('data_loss_suspected');
+  if (normalizedProblem === 'auth-login-error') reasons.push('login_blocked');
+  if (normalizedProblem === 'pro-upgrade-entitlement' || normalizedProblem === 'plan-reflection-failure') reasons.push('plan_reflection_failure');
+  if (normalizedProblem === 'save-persistence') reasons.push('production_save_failed');
   return reasons;
 }
 
 export function summarizeUrgentNotifications(notifications: Array<Record<string, unknown>>) {
-  type UrgencyReason = 'critical_severity' | 'critical_impact' | 'repeated_feedback_threshold';
+  type UrgencyReason = 'critical_severity' | 'critical_impact' | 'repeated_feedback_threshold' | 'billing_issue' | 'data_loss_suspected' | 'login_blocked' | 'plan_reflection_failure' | 'production_save_failed';
   const byReason = {
     critical_severity: 0,
     critical_impact: 0,
     repeated_feedback_threshold: 0,
+    billing_issue: 0,
+    data_loss_suspected: 0,
+    login_blocked: 0,
+    plan_reflection_failure: 0,
+    production_save_failed: 0,
   } satisfies Record<UrgencyReason, number>;
   let topPriorityScore = 0;
 
@@ -2194,16 +2213,25 @@ export function summarizeUrgentNotifications(notifications: Array<Record<string,
 
 export function redactSensitiveText(value: string) {
   return value
+    .replace(/((?:鑑定本文|鑑定内容|会話本文|会話ログ|顧客マスター|顧客情報全文|customer master|appraisal text|conversation transcript)\s*)[:：][\s\S]*?(?=\n(?:質問|不具合|改善|画面|操作|発生日時|$)|$)/gi, '$1: [REDACTED_FULL_CONTENT]')
     .replace(/\b(?:\d[ -]?){13,19}\b/g, '[REDACTED_PAYMENT_CARD]')
     .replace(/\b(?:cvv|cvc|security code|セキュリティコード)\s*[:=]?\s*\d{3,4}\b/gi, '[REDACTED_PAYMENT_CODE]')
+    .replace(/\b(?:whsec|rk|sk|pk)_(?:live|test)_[A-Za-z0-9_]{12,}\b/g, '[REDACTED_SECRET]')
     .replace(/\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9_]{12,}\b/g, '[REDACTED_SECRET]')
     .replace(/\b(?:ghp|github_pat|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}\b/g, '[REDACTED_SECRET]')
     .replace(/\b(?:api[_-]?key|secret|token|password|passwd|bearer)\s*[:=]\s*["']?[^"'\s,;]{8,}/gi, '$1=[REDACTED_SECRET]')
     .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '[REDACTED_EMAIL]');
 }
 
-function isUrgencyReason(value: unknown): value is 'critical_severity' | 'critical_impact' | 'repeated_feedback_threshold' {
-  return value === 'critical_severity' || value === 'critical_impact' || value === 'repeated_feedback_threshold';
+function isUrgencyReason(value: unknown): value is 'critical_severity' | 'critical_impact' | 'repeated_feedback_threshold' | 'billing_issue' | 'data_loss_suspected' | 'login_blocked' | 'plan_reflection_failure' | 'production_save_failed' {
+  return value === 'critical_severity'
+    || value === 'critical_impact'
+    || value === 'repeated_feedback_threshold'
+    || value === 'billing_issue'
+    || value === 'data_loss_suspected'
+    || value === 'login_blocked'
+    || value === 'plan_reflection_failure'
+    || value === 'production_save_failed';
 }
 
 function parseJsonStringArray(value: unknown) {

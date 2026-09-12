@@ -44,8 +44,10 @@ Each source app owns its own question box UI. Feedback Hub owns the shared intak
 - Source apps attach `sourceApp`, `appVersion`, `planId`, `workspaceId`, `userId`, `currentScreen`, submitted category, occurrence time, and `correlationId`.
 - Numeria Studio and Velvet are release-ready `sourceApp` values for Free and Pro users.
 - Bug reports are accepted regardless of plan. Free limit questions and Pro contract, upgrade, or entitlement reflection issues are classified for admin review.
+- Release classification follows `docs/contracts/plan-contract.md` and `docs/release-readiness/free-pro-release-implementation-requests.md` as the upstream plan contract references.
+- Release-specific groups include Free limits, Pro contract questions, upgrade / plan reflection failures, auth errors, save failures, PDF export errors, AI usage errors, billing issues, and data loss suspicion.
 - Feedback Hub receives the feedback, stores the original voice, uses AI Platform Core, groups similar feedback into Issues, and ranks priority.
-- Feedback Hub redacts payment card numbers, secret-like tokens, and email addresses before message body persistence.
+- Feedback Hub redacts payment card numbers, Stripe / API secrets, email addresses, and pasted full appraisal, conversation, or customer-master content before message body persistence.
 
 Embedding endpoints:
 

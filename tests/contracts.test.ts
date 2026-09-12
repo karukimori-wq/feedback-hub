@@ -108,7 +108,7 @@ describe('contract endpoints', () => {
     const body = await response.json() as {
       readiness: {
         ready: boolean;
-        releaseScope: { sourceApps: string[]; planIds: string[]; contextFields: string[] };
+        releaseScope: { sourceApps: string[]; planIds: string[]; contextFields: string[]; planContractReferences: string[]; classificationTargets: string[] };
         aiPlatformCore: { configured: boolean; route: string };
         database: { ready: boolean; missingColumns: string[] };
         safeguards: { bugReportsRateLimitedByPlan: boolean; sensitiveBodyRedaction: boolean };
@@ -118,6 +118,9 @@ describe('contract endpoints', () => {
     expect(body.readiness.releaseScope.sourceApps).toEqual(['numeria-studio', 'velvet']);
     expect(body.readiness.releaseScope.planIds).toEqual(['free', 'pro']);
     expect(body.readiness.releaseScope.contextFields).toContain('correlationId');
+    expect(body.readiness.releaseScope.planContractReferences).toContain('docs/contracts/plan-contract.md');
+    expect(body.readiness.releaseScope.classificationTargets).toContain('billing-payment-issue');
+    expect(body.readiness.releaseScope.classificationTargets).toContain('data-loss-suspected');
     expect(body.readiness.aiPlatformCore.configured).toBe(true);
     expect(body.readiness.aiPlatformCore.route).toBe('http');
     expect(body.readiness.database.ready).toBe(true);
@@ -298,8 +301,10 @@ describe('contract endpoints', () => {
           requiredFields: string[];
           autoContextFields: string[];
           acceptedPlanIds: string[];
+          planContractReferences: string[];
           releasePlanIds: string[];
           bugReportsRateLimitedByPlan: boolean;
+          releaseClassificationTargets: string[];
           supportedCategories: string[];
           responseModes: string[];
           bodyRules: {
@@ -333,8 +338,11 @@ describe('contract endpoints', () => {
     expect(numeria?.requiredFields).toContain('correlationId');
     expect(numeria?.autoContextFields).toContain('browser');
     expect(numeria?.acceptedPlanIds).toEqual(['free', 'pro', 'business']);
+    expect(numeria?.planContractReferences).toContain('docs/contracts/plan-contract.md');
     expect(numeria?.releasePlanIds).toEqual(['free', 'pro']);
     expect(numeria?.bugReportsRateLimitedByPlan).toBe(false);
+    expect(numeria?.releaseClassificationTargets).toContain('pdf-export-error');
+    expect(numeria?.releaseClassificationTargets).toContain('ai-runtime-error');
     expect(numeria?.supportedCategories).toContain('Bug');
     expect(numeria?.responseModes).toContain('ask_follow_up');
     expect(numeria?.bodyRules.sendPaymentDetails).toBe(false);
@@ -523,7 +531,7 @@ describe('contract endpoints', () => {
     };
 
     expect(body.evidence.issue.issue_id).toBe('issue_save');
-    expect(body.evidence.issue.urgencyReasons).toEqual(['critical_severity', 'critical_impact', 'repeated_feedback_threshold']);
+    expect(body.evidence.issue.urgencyReasons).toEqual(['critical_severity', 'critical_impact', 'repeated_feedback_threshold', 'production_save_failed']);
     expect(body.evidence.issue.recommendedAction).toBe('triage_now');
     expect(body.evidence.issue.priorityComponents.severityWeight).toBe(10);
     expect(body.evidence.evidenceSummary.sourceConversationCount).toBe(1);

@@ -4,6 +4,22 @@ export const SUPPORTED_SOURCE_APPS = ['numeria-studio', 'velvet', 'sns-planner',
 export const RELEASE_READY_SOURCE_APPS = ['numeria-studio', 'velvet'] as const;
 export const ACCEPTED_PLAN_IDS = ['free', 'pro', 'business'] as const;
 export const RELEASE_CONTEXT_FIELDS = ['sourceApp', 'appVersion', 'planId', 'workspaceId', 'userId', 'currentScreen', 'category', 'occurredAt', 'correlationId'] as const;
+export const PLAN_CONTRACT_REFERENCES = [
+  'docs/contracts/plan-contract.md',
+  'docs/release-readiness/free-pro-release-implementation-requests.md',
+] as const;
+export const RELEASE_CLASSIFICATION_TARGETS = [
+  'free-plan-limit-question',
+  'pro-contract-question',
+  'pro-upgrade-entitlement',
+  'plan-reflection-failure',
+  'auth-login-error',
+  'save-persistence',
+  'data-loss-suspected',
+  'pdf-export-error',
+  'ai-runtime-error',
+  'billing-payment-issue',
+] as const;
 export const RELEASE_SMOKE_CHECKS = [
   { key: 'health', method: 'GET', path: '/health' },
   { key: 'version', method: 'GET', path: '/version' },
@@ -50,11 +66,11 @@ export interface PriorityComponents {
   impactWeight: number;
 }
 
-const bugWords = ['bug', 'error', 'fail', 'failed', 'broken', 'cannot', "can't", 'crash', '保存できない', '保存されない', '残らない', '登録失敗', '失敗', 'エラー', '動かない', 'ログインできない', '課金できない', '反映されない', '反映しない', 'アップグレードできない'];
-const questionWords = ['how', 'what', 'why', 'where', 'when', 'どこ', 'なぜ', 'どう', '質問', '教えて', '上限', '無料枠', 'free', 'プラン'];
+const bugWords = ['bug', 'error', 'fail', 'failed', 'broken', 'cannot', "can't", 'crash', '保存できない', '保存されない', '残らない', '登録失敗', '失敗', 'エラー', '動かない', 'ログインできない', '認証できない', '課金できない', '決済できない', '反映されない', '反映しない', 'アップグレードできない', 'pdfが出ない', 'pdf出力できない', 'aiが使えない'];
+const questionWords = ['how', 'what', 'why', 'where', 'when', 'どこ', 'なぜ', 'どう', '質問', '教えて', '上限', '無料枠', 'free', 'プラン', '契約'];
 const requestWords = ['want', 'need', 'feature', 'ほしい', '欲しい', '追加', 'できるように', '比較', '見たい'];
 const uxWords = ['confusing', 'hard to use', 'わかりづらい', '分かりづらい', '使いづらい', '見づらい', '押しづらい'];
-const criticalWords = ['login', 'payment', 'checkout', 'auth', 'ログイン', '課金', '決済', '支払い', '保存できない', '保存されない', 'データが残らない', 'データ消失', '消えた', '購入したのに', 'proにならない', 'proが反映されない'];
+const criticalWords = ['login', 'payment', 'checkout', 'billing', 'auth', 'ログイン', '認証', '課金', '決済', '支払い', '保存できない', '保存されない', '本番保存失敗', 'データが残らない', 'データ消失', '消えた', '消えている', '購入したのに', 'proにならない', 'proが反映されない', 'プランが反映されない'];
 
 export function analyzeFeedbackText(input: string, linkedCount = 1): FeedbackAnalysis {
   const text = input.trim();
@@ -96,10 +112,15 @@ export function similarityScore(a: string, b: string): number {
 
 export function makeIssueTitle(normalizedProblem: string, category: FeedbackCategory): string {
   if (normalizedProblem.includes('save-persistence')) return '保存処理の不具合';
-  if (normalizedProblem.includes('login-access')) return 'ログインまたはアクセスの不具合';
-  if (normalizedProblem.includes('payment-checkout')) return '課金または決済の不具合';
+  if (normalizedProblem.includes('data-loss-suspected')) return 'データ消失の疑い';
+  if (normalizedProblem.includes('auth-login-error')) return 'ログインまたは認証の不具合';
+  if (normalizedProblem.includes('billing-payment-issue')) return '課金または決済の不具合';
   if (normalizedProblem.includes('free-plan-limit-question')) return 'Free上限に関する質問';
+  if (normalizedProblem.includes('pro-contract-question')) return 'Pro契約に関する質問';
   if (normalizedProblem.includes('pro-upgrade-entitlement')) return 'Pro契約またはアップグレード反映の問題';
+  if (normalizedProblem.includes('plan-reflection-failure')) return 'プラン反映不良';
+  if (normalizedProblem.includes('pdf-export-error')) return 'PDF出力の不具合';
+  if (normalizedProblem.includes('ai-runtime-error')) return 'AI利用の不具合';
   if (normalizedProblem.includes('comparison-view')) return '比較表示機能の要望';
   return `${category}: ${normalizedProblem.slice(0, 48)}`;
 }
@@ -128,11 +149,16 @@ function classifyImpact(lower: string, category: FeedbackCategory): Impact {
 }
 
 function normalizeProblem(lower: string): string {
+  if (/(データ消失|消えた|消えている|データがない|履歴がない|鑑定.*消失|会話.*消失)/i.test(lower)) return 'data-loss-suspected';
   if (/(保存できない|保存されない|残らない|登録失敗|save|persist|persistence)/i.test(lower)) return 'save-persistence';
-  if (/(ログイン|login|auth|access)/i.test(lower)) return 'login-access';
+  if (/(ログイン|認証|サインイン|sign.?in|login|auth|access)/i.test(lower)) return 'auth-login-error';
   if (/(pro|プロ|upgrade|アップグレード|契約).*(反映されない|反映しない|できない|失敗|ならない|使えない|購入したのに)|購入したのに.*(pro|プロ|使えない)/i.test(lower)) return 'pro-upgrade-entitlement';
+  if (/(plan|プラン|契約).*(反映されない|反映しない|ならない|変わらない|使えない)/i.test(lower)) return 'plan-reflection-failure';
+  if (/(pro|プロ|有料).*(契約|料金|申し込み|申込|解約|更新).*(\?|？|ですか|ますか|教えて|どう|なぜ|どこ)|(\?|？|ですか|ますか|教えて|どう|なぜ|どこ).*(pro|プロ|有料).*(契約|料金|申し込み|申込|解約|更新)/i.test(lower)) return 'pro-contract-question';
   if (/(free|無料|上限|無料枠|月20|20件|3名|3件)/i.test(lower)) return 'free-plan-limit-question';
-  if (/(課金|決済|支払い|payment|checkout|billing)/i.test(lower)) return 'payment-checkout';
+  if (/(課金|決済|支払い|stripe|payment|checkout|billing)/i.test(lower)) return 'billing-payment-issue';
+  if (/(pdf|ＰＤＦ|ダウンロード|出力).*(エラー|できない|失敗|壊れ|開けない)|((エラー|できない|失敗|壊れ|開けない).*(pdf|ＰＤＦ|ダウンロード|出力))/i.test(lower)) return 'pdf-export-error';
+  if (/(ai|ＡＩ|apc|ai platform core|生成|補助).*(エラー|使えない|失敗|上限|動かない)|((エラー|使えない|失敗|上限|動かない).*(ai|ＡＩ|apc|生成|補助))/i.test(lower)) return 'ai-runtime-error';
   if (/(比較|compare|comparison|前回)/i.test(lower)) return 'comparison-view';
   return lower.replace(/\s+/g, ' ').slice(0, 96);
 }

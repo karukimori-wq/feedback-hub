@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { ACCEPTED_PLAN_IDS, APP_NAME, CONTRACT_VERSION, EXTERNAL_INTELLIGENCE_SNAPSHOT_SECTIONS, RELEASE_CONTEXT_FIELDS, RELEASE_READY_SOURCE_APPS, RELEASE_SMOKE_CHECKS, SUPPORTED_SOURCE_APPS } from './domain';
+import { ACCEPTED_PLAN_IDS, APP_NAME, CONTRACT_VERSION, EXTERNAL_INTELLIGENCE_SNAPSHOT_SECTIONS, PLAN_CONTRACT_REFERENCES, RELEASE_CLASSIFICATION_TARGETS, RELEASE_CONTEXT_FIELDS, RELEASE_READY_SOURCE_APPS, RELEASE_SMOKE_CHECKS, SUPPORTED_SOURCE_APPS } from './domain';
 import {
   analyzeConversation,
   createConversation,
@@ -469,6 +469,7 @@ app.get('/api/admin/external-intelligence-snapshot', (c) => c.json({
       planIds: ['free', 'pro'],
       futurePlanIds: ['business'],
       requiredContextFields: [...RELEASE_CONTEXT_FIELDS],
+      planContractReferences: [...PLAN_CONTRACT_REFERENCES],
       bugReportsRateLimitedByPlan: false,
     },
     intakeContract: {
@@ -493,13 +494,14 @@ app.get('/api/admin/external-intelligence-snapshot', (c) => c.json({
     analysisOutputs: {
       conversationModel: ['Conversation', 'Message', 'AI Analysis', 'Issue'],
       categories: ['Question', 'Bug', 'Improvement', 'Feature Request', 'UX Feedback', 'Other'],
+      releaseClassificationTargets: [...RELEASE_CLASSIFICATION_TARGETS],
       grouping: 'similar-feedback-to-canonical-issue',
       priorityFormula: 'severity * count * impact',
       rawVoicePreservedAfterRedaction: true,
     },
     adminSignals: {
       rankings: ['Bug TOP10', 'Request TOP20', 'Question TOP20'],
-      urgentNotificationRules: ['Critical severity', 'Critical impact', 'same issue count >= 30'],
+      urgentNotificationRules: ['Critical severity', 'Critical impact', 'same issue count >= 30', 'billing issue', 'data loss suspected', 'login blocked', 'plan reflection failure', 'production save failure'],
       aggregations: ['sourceApp', 'planId', 'category', 'severity', 'impact'],
     },
     handoffTargets: {

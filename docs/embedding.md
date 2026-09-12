@@ -81,6 +81,8 @@ Important response fields:
 - `contracts[].processingOwner`: Always `feedback-hub`; Feedback Hub owns intake, AI analysis, grouping, ranking, and admin review outputs.
 - `contracts[].aiProvider`: `ai-platform-core`.
 - `contracts[].requiredFields`: Includes `sourceApp`, `appVersion`, `planId`, `workspaceId`, `userId`, `currentScreen`, `category`, `occurredAt`, `correlationId`, and `initialMessage`.
+- `contracts[].planContractReferences`: Upstream plan contract documents that Feedback Hub aligns with.
+- `contracts[].releaseClassificationTargets`: Release-specific groups such as Free limits, Pro contract questions, plan reflection failures, auth errors, PDF export errors, AI usage errors, billing issues, and data loss suspicion.
 - `contracts[].releasePlanIds`: `free` and `pro` for Numeria Studio and Velvet.
 - `contracts[].bodyRules`: Payment details and secret values must not be sent; Feedback Hub redacts before persistence as defense in depth.
 
@@ -118,12 +120,18 @@ The endpoint is idempotent for source-app retries. When the same `correlationId`
 
 Do not send payment details, raw card numbers, API keys, tokens, passwords, or secret values in the message body. Feedback Hub also redacts common payment and secret-like values before persistence as a defense-in-depth measure.
 
+Do not send full appraisal text, full conversation transcripts, or full customer-master records. Feedback Hub accepts the user's short description of the issue and auto context fields; if full-content labels are pasted by mistake, the body sanitizer redacts those sections before persistence.
+
 ## Release Classification Notes
 
 | User voice | Expected classification |
 | --- | --- |
 | Free usage cap, free limit, monthly limit questions | `Question` with `free-plan-limit-question` grouping |
+| Pro contract or billing-plan questions | `Question` with `pro-contract-question` grouping |
 | Pro purchase, upgrade, or entitlement did not reflect | `Bug` with `pro-upgrade-entitlement` grouping |
+| Login or authentication failure | Critical `auth-login-error` grouping |
+| PDF download or export failure | `pdf-export-error` grouping |
+| AI assist or AI Platform Core usage failure | `ai-runtime-error` grouping |
 | Billing or upgrade blocks that stop paid usage | Critical urgent notification candidate |
 | Data disappeared, cannot save, data does not remain | Critical urgent notification candidate |
 
